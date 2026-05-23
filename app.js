@@ -42,6 +42,8 @@ const orderBtn = document.getElementById("orderBtn");
 const loadingEl = document.getElementById("loadingIndicator");
 const dotsContainer = document.getElementById("indexDots");
 
+let currentIndex = 0;
+
 function buildDots() {
   dotsContainer.innerHTML = "";
   products.forEach((_, i) => {
@@ -58,7 +60,7 @@ function updateDots() {
 }
 
 // =========================================
-// RENDERER — مهم‌ترین بخش برای رنگ درست
+// RENDERER
 // =========================================
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
@@ -68,17 +70,13 @@ const renderer = new THREE.WebGLRenderer({
 
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
-
-// ✅ این دو خط باعث می‌شه رنگ‌ها دقیقاً مثل Blender باشن
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
-
-// ✅ سایه روشن کردیم
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
 renderer.xr.enabled = true;
+
 document.body.appendChild(renderer.domElement);
 
 // =========================================
@@ -94,36 +92,24 @@ const camera = new THREE.PerspectiveCamera(
 );
 
 // =========================================
-// ENVIRONMENT MAP — کلید اصلی PBR درست
+// ENVIRONMENT MAP — اصلاح شده
 // =========================================
-// اگر فایل HDR داری، مسیرش رو اینجا بذار:
-// const rgbeLoader = new RGBELoader();
-// rgbeLoader.load("./studio.hdr", (texture) => {
-//   texture.mapping = THREE.EquirectangularReflectionMapping;
-//   scene.environment = texture;   // ← PBR materials از این نور می‌گیرن
-//   scene.background  = null;      // AR نیازی به background نداره
-// });
-
-// ✅ بدون HDR: یه محیط مصنوعی می‌سازیم که PBR رو تغذیه می‌کنه
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 pmremGenerator.compileEquirectangularShader();
 
-// یک صحنه ساده برای تولید envMap
-const fakeEnv = new THREE.RoomEnvironment();
-const envTexture = pmremGenerator.fromScene(fakeEnv).texture;
-scene.environment = envTexture; // ✅ metalness / roughness الان درست کار می‌کنن
-fakeEnv.dispose();
+const roomEnv = new RoomEnvironment(renderer);
+const envTexture = pmremGenerator.fromScene(roomEnv).texture;
+scene.environment = envTexture;
+
+roomEnv.dispose();
 pmremGenerator.dispose();
 
 // =========================================
-// LIGHTS — چند نور برای شبیه‌سازی Blender HDRI
+// LIGHTS
 // =========================================
-
-// نور محیطی نرم
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambientLight);
 
-// نور اصلی — از بالا سمت چپ مثل sun در Blender
 const keyLight = new THREE.DirectionalLight(0xfff5e0, 2.0);
 keyLight.position.set(3, 6, 4);
 keyLight.castShadow = true;
@@ -134,17 +120,14 @@ keyLight.shadow.camera.far = 20;
 keyLight.shadow.bias = -0.001;
 scene.add(keyLight);
 
-// نور fill — از سمت مخالف، نرم‌تر
 const fillLight = new THREE.DirectionalLight(0xc8e0ff, 0.8);
 fillLight.position.set(-4, 2, -3);
 scene.add(fillLight);
 
-// نور rim — از پشت مدل، لبه روشن
 const rimLight = new THREE.DirectionalLight(0xffd699, 1.2);
 rimLight.position.set(0, 3, -5);
 scene.add(rimLight);
 
-// نور از پایین — bounce light
 const bounceLight = new THREE.DirectionalLight(0xffe8d0, 0.3);
 bounceLight.position.set(0, -3, 2);
 scene.add(bounceLight);
@@ -162,7 +145,6 @@ document.body.appendChild(
 // GLTF / DRACO LOADER
 // =========================================
 const dracoLoader = new DRACOLoader();
-// اگر مدل‌هات Draco compression دارن این رو فعال کن:
 dracoLoader.setDecoderPath(
   "https://www.gstatic.com/draco/versioned/decoders/1.5.6/",
 );
@@ -171,51 +153,43 @@ const loader = new GLTFLoader();
 loader.setDRACOLoader(dracoLoader);
 
 let currentModel = null;
-let currentIndex = 0;
 let isLoading = false;
-let mixer = null; // برای animation اگر مدل داشت
+let mixer = null;
 
 // =========================================
-// AUTO-FIT — مدل رو خودکار resize و center می‌کنه
+// AUTO-FIT
 // =========================================
 function fitModelToView(model) {
-  // مرکز واقعی مدل رو حساب می‌کنیم
   const box = new THREE.Box3().setFromObject(model);
   const center = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3());
 
-  // بزرگترین بعد مدل رو پیدا می‌کنیم
   const maxDim = Math.max(size.x, size.y, size.z);
-
-  // ✅ target size: مدل باید ~0.35 متر بشه (خوانا در AR)
   const targetSize = 0.35;
   const scaleFactor = targetSize / maxDim;
 
   model.scale.setScalar(scaleFactor);
 
-  // بعد از scale، مدل رو مرکز می‌کنیم
   model.position.set(
     -center.x * scaleFactor,
-    -center.y * scaleFactor - 0.05, // کمی پایین‌تر
-    -1.2, // فاصله از دوربین
+    -center.y * scaleFactor - 0.05,
+    -1.2,
   );
 }
 
 // =========================================
-// FIX MATERIALS — رنگ و texture درست
+// FIX MATERIALS
 // =========================================
 function fixMaterials(model) {
   model.traverse((node) => {
     if (!node.isMesh) return;
 
-    // ✅ سایه بده و سایه بگیر
     node.castShadow = true;
     node.receiveShadow = true;
 
     const mat = node.material;
     if (!mat) return;
 
-    // ✅ اگر texture داره، colorSpace رو درست کن
     if (mat.map) {
       mat.map.colorSpace = THREE.SRGBColorSpace;
     }
@@ -223,7 +197,6 @@ function fixMaterials(model) {
       mat.emissiveMap.colorSpace = THREE.SRGBColorSpace;
     }
 
-    // ✅ مطمئن می‌شیم needsUpdate صدا زده بشه
     mat.needsUpdate = true;
   });
 }
@@ -237,7 +210,6 @@ function loadProduct(index) {
 
   const product = products[index];
 
-  // آپدیت UI
   nameEl.textContent = product.name;
   priceEl.textContent = product.price;
   descriptionEl.textContent = product.description;
@@ -247,16 +219,15 @@ function loadProduct(index) {
   loadingEl.style.display = "block";
   updateDots();
 
-  // مدل قبلی رو حذف کن
   if (currentModel) {
     scene.remove(currentModel);
     currentModel.traverse((node) => {
       if (node.isMesh) {
-        node.geometry.dispose();
+        node.geometry?.dispose();
         if (Array.isArray(node.material)) {
           node.material.forEach((m) => m.dispose());
         } else {
-          node.material.dispose();
+          node.material?.dispose();
         }
       }
     });
@@ -271,17 +242,11 @@ function loadProduct(index) {
   loader.load(
     product.model,
 
-    // ✅ onLoad
     (gltf) => {
       currentModel = gltf.scene;
-
-      // ✅ ابتدا materials رو fix کن
       fixMaterials(currentModel);
-
-      // ✅ بعد اندازه و موقعیت رو تنظیم کن
       fitModelToView(currentModel);
 
-      // ✅ اگر مدل animation داشت، پخش کن
       if (gltf.animations && gltf.animations.length > 0) {
         mixer = new THREE.AnimationMixer(currentModel);
         gltf.animations.forEach((clip) => {
@@ -294,7 +259,6 @@ function loadProduct(index) {
       isLoading = false;
     },
 
-    // onProgress
     (xhr) => {
       if (xhr.lengthComputable) {
         const percent = Math.round((xhr.loaded / xhr.total) * 100);
@@ -302,11 +266,9 @@ function loadProduct(index) {
       }
     },
 
-    // ✅ onError — جای مدل یه placeholder نشون می‌ده
     (err) => {
       console.warn("❌ Model failed to load:", product.model, err);
 
-      // یه pizza شکل ساده به عنوان placeholder
       const group = new THREE.Group();
 
       const bodyGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.03, 32);
@@ -316,6 +278,8 @@ function loadProduct(index) {
         metalness: 0.0,
       });
       const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.castShadow = true;
+      body.receiveShadow = true;
       group.add(body);
 
       const crustGeo = new THREE.TorusGeometry(0.18, 0.025, 8, 32);
@@ -325,6 +289,8 @@ function loadProduct(index) {
       });
       const crust = new THREE.Mesh(crustGeo, crustMat);
       crust.rotation.x = Math.PI / 2;
+      crust.castShadow = true;
+      crust.receiveShadow = true;
       group.add(crust);
 
       group.position.set(0, -0.5, -1.2);
@@ -358,10 +324,8 @@ const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const delta = clock.getDelta();
 
-  // آپدیت animation mixer اگر مدل animation داشت
   if (mixer) mixer.update(delta);
 
-  // چرخش آروم مدل
   if (currentModel) {
     currentModel.rotation.y += 0.004;
   }
