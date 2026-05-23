@@ -21,15 +21,12 @@
   </head>
 
   <body>
-    <!-- ═══════════════════════════════════════════════════════════
-         WebXR dom-overlay root — همه چیز داخل این div باشه
-         تا در AR هم interactive باشن
-         ═══════════════════════════════════════════════════════════ -->
+    <!-- WebXR dom-overlay root -->
     <div id="ui-overlay">
-      <!-- نشانگر اسکن سطح -->
+      <!-- shown while scanning surface -->
       <div id="ar-hint">🔍 Scanning for a surface…</div>
 
-      <!-- لودینگ اسپینر -->
+      <!-- loading spinner -->
       <div id="loadingIndicator">
         <div class="loading-dots">
           <span class="loading-dot"></span>
@@ -39,70 +36,12 @@
         <div class="loading-label">Loading model…</div>
       </div>
 
-      <!-- ═══════════════════════════════════════════════════
-           پنل مخصوص AR — فقط در حالت AR نمایش داده می‌شه
-           این بخش باید داخل ui-overlay باشه تا در AR کار کنه
-           ═══════════════════════════════════════════════════ -->
-      <div id="ar-panel">
-        <!-- دکمه toggle برای پنهان/نمایش جزئیات -->
-        <button
-          id="ar-toggle-btn"
-          class="ar-toggle-btn"
-          aria-label="Toggle details"
-        >
-          <span id="ar-toggle-icon">▼</span>
-          <span id="ar-toggle-label">جزئیات</span>
-        </button>
-
-        <!-- محتوای قابل hide/show -->
-        <div id="ar-details-panel">
-          <!-- ردیف نام + قیمت -->
-          <div class="ar-top-row">
-            <div id="ar-name" class="ar-product-name">Pepperoni Pizza</div>
-            <div id="ar-price" class="ar-product-price">$14</div>
-          </div>
-
-          <!-- توضیح محصول -->
-          <div id="ar-desc" class="ar-desc-text">
-            Pepperoni, mozzarella cheese, olives and mushroom.
-          </div>
-
-          <!-- دکمه‌های ناوبری + نقاط -->
-          <div class="ar-nav-row">
-            <button
-              class="ar-nav-btn"
-              id="ar-prevBtn"
-              aria-label="Previous product"
-            >
-              ‹
-            </button>
-            <div id="ar-dots" class="ar-dots-container"></div>
-            <button
-              class="ar-nav-btn"
-              id="ar-nextBtn"
-              aria-label="Next product"
-            >
-              ›
-            </button>
-          </div>
-
-          <!-- دکمه سفارش -->
-          <button id="ar-orderBtn" class="ar-order-btn">
-            🛒 Order This Pizza
-          </button>
-        </div>
-        <!-- /ar-details-panel -->
-      </div>
-      <!-- /ar-panel -->
-
-      <!-- ═══════════════════════════════════════════════════
-           پنل معمولی سایت — فقط خارج از AR نمایش داده می‌شه
-           ═══════════════════════════════════════════════════ -->
+      <!-- bottom info panel (hidden in AR — 3D label takes over) -->
       <div id="bottom-panel">
         <div id="indexDots"></div>
 
         <div class="top-row">
-          <div id="name">Pepperoni Pizza</div>
+          <div id="name">Pepperoni Pizza3</div>
           <div id="price">$14</div>
         </div>
 
@@ -122,9 +61,7 @@
           <a href="https://yourwebsite.com" target="_blank">YourBrand AR</a>
         </div>
       </div>
-      <!-- /bottom-panel -->
     </div>
-    <!-- /ui-overlay -->
 
     <script type="module" src="./app.js"></script>
   </body>
