@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AR Cafe Menu</title>
+
+    <!-- ✅ FIX: importmap به مرورگر میگه "three" به کجا resolve بشه -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="hint">📱 Move slowly · Tap AR to place on surface</div>
+
+    <div class="ui">
+      <div class="top-row">
+        <div class="product-name" id="name">Pepperoni Pizza</div>
+        <div class="price-badge" id="price">$14</div>
+      </div>
+
+      <div class="description" id="description">
+        Pepperoni, mozzarella cheese, olives and mushroom.
+      </div>
+
+      <div id="loadingIndicator">
+        <span class="loading-dot"></span>
+        <span class="loading-dot"></span>
+        <span class="loading-dot"></span>
+      </div>
+
+      <div class="index-dots" id="indexDots"></div>
+
+      <div class="controls">
+        <button class="switch-btn" id="prevBtn">◀ Previous</button>
+        <button class="switch-btn" id="nextBtn">Next ▶</button>
+      </div>
+
+      <button class="order-btn" id="orderBtn">🛒 Order This Pizza</button>
+
+      <div class="brand">
+        Powered by
+        <a href="https://yourwebsite.com" target="_blank">YourBrand AR</a>
+      </div>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
