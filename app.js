@@ -3,6 +3,7 @@ import { ARButton } from "three/addons/webxr/ARButton.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 // =========================================
 // PRODUCTS
