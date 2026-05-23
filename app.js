@@ -9,7 +9,7 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 // =========================================
 const products = [
   {
-    name: "Pepperoni Pizza",
+    name: "Pepperoni Pizza1",
     price: "$14",
     description: "Pepperoni, mozzarella cheese, olives and mushroom.",
     model: "./models/pizza.glb",
@@ -432,13 +432,27 @@ renderer.domElement.addEventListener("click", (e) => {
 
   // Place model on reticle
   if (!modelPlaced && reticle.visible) {
-    // فقط موقعیت نبود → ماتریس کامل
+    // 1. اول مدل رو کامل fit کن
+    fitModel(currentModel, true);
+
+    // 2. موقعیت رتیکل رو بگیریم
+    const hitPosition = new THREE.Vector3();
+    hitPosition.setFromMatrixPosition(reticle.matrix);
+
+    // 3. rootGroup رو روی سطح قرار بده + چرخش سطح
     rootGroup.matrix.copy(reticle.matrix);
     rootGroup.matrix.decompose(
       rootGroup.position,
       rootGroup.quaternion,
       rootGroup.scale,
     );
+
+    // 4. حالا موقعیت Y مدل رو نسبت به سطح تنظیم کن (مهم!)
+    // چون rootGroup روی سطح قرار گرفته، position.y مدل باید صفر باشه + offset
+    if (currentModel) {
+      currentModel.position.y = -currentModel.position.y + 0.008;
+      // یا اگر قبلاً مثبت شده، اینطوری جبران کن
+    }
 
     rootGroup.visible = true;
     reticle.visible = false;
@@ -449,7 +463,7 @@ renderer.domElement.addEventListener("click", (e) => {
 });
 
 // =========================================
-// FIT MODEL
+// FIT MODEL - نسخه بهبود یافته
 // =========================================
 function fitModel(model, isAR) {
   const box = new THREE.Box3().setFromObject(model);
@@ -457,22 +471,23 @@ function fitModel(model, isAR) {
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
 
-  const target = isAR ? 0.32 : 0.38; // کمی بزرگتر کردم
-  const scale = target / maxDim;
+  const targetSize = isAR ? 0.32 : 0.38;
+  const scale = targetSize / maxDim;
   model.scale.setScalar(scale);
 
   // دوباره محاسبه بعد از scale
-  const box2 = new THREE.Box3().setFromObject(model);
+  const boxAfter = new THREE.Box3().setFromObject(model);
 
+  // centering X and Z
   model.position.x = -center.x * scale;
   model.position.z = 0;
 
+  // خیلی مهم: مدل رو طوری تنظیم کنیم که کفش دقیقاً روی y=0 باشه
+  model.position.y = -boxAfter.min.y;
+
+  // offset خیلی کوچک برای جلوگیری از z-fighting یا sinking
   if (isAR) {
-    // === مهم: برای AR ===
-    model.position.y = -box2.min.y + 0.005; // 0.005 offset خیلی کمک می‌کنه
-  } else {
-    model.position.y = -box2.min.y;
-    model.position.z = -1.1;
+    model.position.y += 0.008;
   }
 }
 
