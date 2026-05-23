@@ -9,7 +9,7 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 // =========================================
 const products = [
   {
-    name: "Pepperoni Pizza1",
+    name: "Pepperoni Pizza",
     price: "$14",
     description: "Pepperoni, mozzarella cheese, olives and mushroom.",
     model: "./models/pizza.glb",
@@ -71,7 +71,7 @@ const camera = new THREE.PerspectiveCamera(
   0.01,
   20,
 );
-camera.position.set(0, 0.3, 0.8);
+camera.position.set(0, -0.05, 0.8);
 
 // =========================================
 // ENVIRONMENT
@@ -96,7 +96,6 @@ keyLight.shadow.mapSize.height = 2048;
 keyLight.shadow.bias = -0.001;
 scene.add(keyLight);
 
-// بعد (درست)
 const fillLight = new THREE.DirectionalLight(0xc8e0ff, 0.8);
 fillLight.position.set(-4, 2, -3);
 scene.add(fillLight);
@@ -106,16 +105,17 @@ rimLight.position.set(0, 3, -5);
 scene.add(rimLight);
 
 // =========================================
-// ROOT GROUP  (model + 3-D label move together)
+// ROOT GROUP
 // =========================================
 const rootGroup = new THREE.Group();
+rootGroup.matrixAutoUpdate = true; // use position/quaternion/scale, NOT raw matrix
 scene.add(rootGroup);
-rootGroup.visible = true; // visible in non-AR from the start
+rootGroup.visible = true;
 
 // =========================================
 // 3-D FLOATING LABEL
 // =========================================
-let currentIndex = 0; // declared early — needed by makeTextCanvas
+let currentIndex = 0;
 
 function makeTextCanvas(product) {
   const W = 512,
@@ -125,7 +125,6 @@ function makeTextCanvas(product) {
   canvas.height = H;
   const ctx = canvas.getContext("2d");
 
-  // Rounded background
   ctx.clearRect(0, 0, W, H);
   const r = 28;
   ctx.beginPath();
@@ -145,18 +144,15 @@ function makeTextCanvas(product) {
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  // Name
   ctx.fillStyle = "#FFD86E";
   ctx.font = "bold 46px 'Segoe UI', Arial, sans-serif";
   ctx.textAlign = "center";
   ctx.fillText(product.name, W / 2, 58);
 
-  // Price
   ctx.fillStyle = "#FFFFFF";
   ctx.font = "bold 36px 'Segoe UI', Arial, sans-serif";
   ctx.fillText(product.price, W / 2, 104);
 
-  // Index dots
   const dotY = 142,
     dotR = 7,
     spacing = 24;
@@ -168,7 +164,6 @@ function makeTextCanvas(product) {
     ctx.fill();
   });
 
-  // Description (word-wrap up to 2 lines)
   ctx.fillStyle = "rgba(255,255,255,0.72)";
   ctx.font = "21px 'Segoe UI', Arial, sans-serif";
   const words = product.description.split(" ");
@@ -192,7 +187,6 @@ let labelSprite = null;
 function createOrUpdateLabel(product) {
   const canvas = makeTextCanvas(product);
   const tex = new THREE.CanvasTexture(canvas);
-
   if (!labelSprite) {
     labelSprite = new THREE.Sprite(
       new THREE.SpriteMaterial({
@@ -207,7 +201,6 @@ function createOrUpdateLabel(product) {
     labelSprite.material.map = tex;
     labelSprite.material.needsUpdate = true;
   }
-
   const aspect = 512 / 230;
   const h = 0.2;
   labelSprite.scale.set(h * aspect, h, 1);
@@ -220,14 +213,13 @@ function positionLabel() {
 }
 
 // =========================================
-// AR NAV ARROWS  (3-D sprites, raycasted)
+// AR NAV ARROWS
 // =========================================
 function makeArrowCanvas(dir) {
   const S = 160;
   const cvs = document.createElement("canvas");
   cvs.width = cvs.height = S;
   const ctx = cvs.getContext("2d");
-
   ctx.clearRect(0, 0, S, S);
   ctx.beginPath();
   ctx.arc(S / 2, S / 2, S / 2 - 4, 0, Math.PI * 2);
@@ -236,7 +228,6 @@ function makeArrowCanvas(dir) {
   ctx.strokeStyle = "rgba(255,200,80,0.75)";
   ctx.lineWidth = 4;
   ctx.stroke();
-
   ctx.fillStyle = "#FFFFFF";
   ctx.font = "bold 80px Arial";
   ctx.textAlign = "center";
@@ -311,7 +302,7 @@ document.body.appendChild(
 // HIT-TEST STATE
 // =========================================
 let hitTestSource = null;
-let hitTestSourceRequested = false; // FIX: guard so listener added only once per session
+let hitTestSourceRequested = false;
 let modelPlaced = false;
 
 // =========================================
@@ -329,7 +320,7 @@ let isLoading = false;
 let mixer = null;
 
 // =========================================
-// LOADING INDICATOR HELPERS  (FIX: use CSS class, not innerHTML)
+// LOADING INDICATOR
 // =========================================
 function showLoading() {
   loadingEl?.classList.add("visible");
@@ -344,9 +335,8 @@ function hideLoading() {
 let isDragging = false;
 let prevX = 0;
 let modelYaw = 0;
-// FIX: track whether a drag actually moved, so tap-to-place isn't consumed
 let dragMoved = false;
-const DRAG_THRESHOLD = 5; // px
+const DRAG_THRESHOLD = 8; // px
 
 function onDragStart(x) {
   isDragging = true;
@@ -371,7 +361,6 @@ renderer.domElement.addEventListener("mousemove", (e) => onDragMove(e.clientX));
 renderer.domElement.addEventListener("mouseup", onDragEnd);
 renderer.domElement.addEventListener("mouseleave", onDragEnd);
 
-// FIX: single touch-start listener that handles BOTH drag-start and swipe-start
 let touchStartX = 0;
 renderer.domElement.addEventListener(
   "touchstart",
@@ -396,8 +385,7 @@ renderer.domElement.addEventListener(
   "touchend",
   (e) => {
     onDragEnd();
-
-    // Swipe navigation in non-AR only
+    // Swipe navigation — non-AR only
     if (!renderer.xr.isPresenting) {
       const dx = e.changedTouches[0].clientX - touchStartX;
       if (Math.abs(dx) > 55 && !dragMoved) navigate(dx < 0 ? 1 : -1);
@@ -407,17 +395,64 @@ renderer.domElement.addEventListener(
 );
 
 // =========================================
-// TAP TO PLACE  +  AR arrow raycasting
+// PLACE MODEL AT RETICLE POSITION
+// This is called both from auto-placement and manual select.
+// =========================================
+function placeModel() {
+  if (!reticle.visible || !currentModel) return;
+
+  // Decompose the reticle's world matrix into rootGroup's
+  // position / quaternion / scale — safe with matrixAutoUpdate = true
+  const pos = new THREE.Vector3();
+  const quat = new THREE.Quaternion();
+  const scl = new THREE.Vector3();
+  reticle.matrix.decompose(pos, quat, scl);
+
+  rootGroup.position.copy(pos);
+  rootGroup.quaternion.copy(quat);
+  rootGroup.scale.set(1, 1, 1); // scale is handled by fitModel, not reticle
+
+  rootGroup.visible = true;
+  reticle.visible = false;
+  modelPlaced = true;
+
+  if (arHint) arHint.style.display = "none";
+}
+
+// =========================================
+// AR SELECT EVENT  (WebXR tap — replaces unreliable click on canvas)
+// =========================================
+function onARSelect() {
+  if (dragMoved) return;
+
+  // Allow re-placement: reset and show reticle again,
+  // then place when reticle is visible
+  if (modelPlaced) {
+    // Second tap → re-place (optional UX)
+    modelPlaced = false;
+    reticle.visible = true;
+    rootGroup.visible = false;
+    if (arHint) {
+      arHint.textContent = "👆 Tap again to re-place";
+      arHint.style.display = "flex";
+    }
+    return;
+  }
+
+  placeModel();
+}
+
+// =========================================
+// NON-AR CLICK: raycast AR arrows (desktop/non-AR fallback)
 // =========================================
 const _raycaster = new THREE.Raycaster();
 const _mouse = new THREE.Vector2();
 
 renderer.domElement.addEventListener("click", (e) => {
-  if (!renderer.xr.isPresenting) return;
-  // Ignore if the touch was actually a drag
+  // In AR, we use the XR select event above — skip click handling
+  if (renderer.xr.isPresenting) return;
   if (dragMoved) return;
 
-  // Check AR arrow sprites first
   _mouse.set(
     (e.clientX / window.innerWidth) * 2 - 1,
     (e.clientY / window.innerHeight) * -2 + 1,
@@ -428,59 +463,32 @@ renderer.domElement.addEventListener("click", (e) => {
   );
   if (hits.length > 0) {
     navigate(hits[0].object.userData.navDir === "next" ? 1 : -1);
-    return;
-  }
-
-  // Place model on reticle
-  if (!modelPlaced && reticle.visible) {
-    // 1. اول مدل رو کامل fit کن
-    fitModel(currentModel, true);
-
-    // 2. قرار دادن rootGroup روی سطح شناسایی شده
-    rootGroup.matrix.copy(reticle.matrix);
-    rootGroup.matrix.decompose(
-      rootGroup.position,
-      rootGroup.quaternion,
-      rootGroup.scale,
-    );
-
-    // توجه: کدهای مخرب position.y از اینجا حذف شدند.
-
-    rootGroup.visible = true;
-    reticle.visible = false;
-    modelPlaced = true;
-
-    if (arHint) arHint.style.display = "none";
   }
 });
 
 // =========================================
-// FIT MODEL - نسخه بهبود یافته و قطعی
+// FIT MODEL
 // =========================================
 function fitModel(model, isAR) {
-  // ریست کردن پوزیشن برای محاسبه دقیق باکس
   model.position.set(0, 0, 0);
   model.scale.setScalar(1);
-  model.updateMatrixWorld();
+  model.updateMatrixWorld(true);
 
   const box = new THREE.Box3().setFromObject(model);
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
 
   const targetSize = isAR ? 0.32 : 0.38;
-  const scale = targetSize / maxDim;
+  const scale = maxDim > 0 ? targetSize / maxDim : 1;
   model.scale.setScalar(scale);
-  model.updateMatrixWorld();
+  model.updateMatrixWorld(true);
 
-  // محاسبه مجدد بعد از اسکیل شدن
   const boxAfter = new THREE.Box3().setFromObject(model);
   const centerAfter = boxAfter.getCenter(new THREE.Vector3());
 
-  // قرار دادن دقیق مدل در مرکز مختصات x و z
   model.position.x = -centerAfter.x;
   model.position.z = -centerAfter.z;
-
-  // قرار دادن کفِ مدل دقیقاً روی سطح (y=0)
+  // Bottom of model sits on y = 0
   model.position.y = -boxAfter.min.y + (isAR ? 0.008 : 0);
 }
 
@@ -565,6 +573,14 @@ function loadProduct(index) {
 
     hideLoading();
     isLoading = false;
+
+    // ── KEY FIX ──────────────────────────────────────────────
+    // In AR, if reticle is already visible (surface already found),
+    // auto-place immediately so the user sees the model right away.
+    if (isAR && reticle.visible && !modelPlaced) {
+      placeModel();
+    }
+    // ─────────────────────────────────────────────────────────
   };
 
   loader.load(
@@ -578,21 +594,17 @@ function loadProduct(index) {
       onLoaded(gltf.scene);
     },
 
-    (xhr) => {
-      // progress — label is inside the animated dots, no textContent needed
-    },
+    undefined, // progress callback not needed
 
     () => {
-      // Fallback pizza geometry when .glb is missing
+      // Fallback geometry when .glb is missing
       const g = new THREE.Group();
-
       const base = new THREE.Mesh(
         new THREE.CylinderGeometry(0.18, 0.18, 0.03, 40),
         new THREE.MeshStandardMaterial({ color: 0xe8b84b, roughness: 0.6 }),
       );
       base.castShadow = base.receiveShadow = true;
       g.add(base);
-
       const crust = new THREE.Mesh(
         new THREE.TorusGeometry(0.18, 0.026, 10, 40),
         new THREE.MeshStandardMaterial({ color: 0xc47c2b, roughness: 0.9 }),
@@ -600,7 +612,6 @@ function loadProduct(index) {
       crust.rotation.x = Math.PI / 2;
       crust.castShadow = true;
       g.add(crust);
-
       onLoaded(g);
     },
   );
@@ -625,37 +636,43 @@ document
 // XR SESSION EVENTS
 // =========================================
 renderer.xr.addEventListener("sessionstart", () => {
-  // FIX: reset ALL hit-test state fresh for this session
   hitTestSource = null;
   hitTestSourceRequested = false;
   modelPlaced = false;
 
-  rootGroup.visible = false; // hide until user places on surface
-  reticle.visible = true;
+  rootGroup.visible = false;
+  reticle.visible = false; // hidden until first hit-test result
 
-  if (arHint) arHint.style.display = "flex";
+  if (arHint) {
+    arHint.textContent = "🔍 Scanning for a surface…";
+    arHint.style.display = "flex";
+  }
   if (bottomPanel) bottomPanel.style.display = "none";
 
   clearModel();
-  loadProduct(currentIndex); // reload at AR scale (isAR = true now)
+  loadProduct(currentIndex);
+
+  // ── Attach WebXR select listener (reliable tap in AR) ──────
+  const session = renderer.xr.getSession();
+  session.addEventListener("select", onARSelect);
 });
 
 renderer.xr.addEventListener("sessionend", () => {
-  // FIX: clean up hit-test state (listener on session already fired 'end')
   hitTestSource = null;
   hitTestSourceRequested = false;
   modelPlaced = false;
 
   reticle.visible = false;
   rootGroup.position.set(0, 0, 0);
-  rootGroup.rotation.set(0, 0, 0);
+  rootGroup.quaternion.identity();
+  rootGroup.scale.set(1, 1, 1);
   rootGroup.visible = true;
 
   if (arHint) arHint.style.display = "none";
   if (bottomPanel) bottomPanel.style.display = "flex";
 
   clearModel();
-  loadProduct(currentIndex); // reload at normal scale
+  loadProduct(currentIndex);
 });
 
 // =========================================
@@ -667,25 +684,23 @@ renderer.setAnimationLoop((_, frame) => {
   const delta = clock.getDelta();
   if (mixer) mixer.update(delta);
 
-  // چرخش خودکار مدل فقط وقتی کاربر درگ نمی‌کند و در فضای AR نیستیم
+  // Auto-rotate only in non-AR
   if (!renderer.xr.isPresenting && !isDragging) {
-    modelYaw += delta * 0.3; // سرعت چرخش را اینجا تنظیم کنید
+    modelYaw += delta * 0.3;
   }
-
-  // اعمال چرخش به کاربر یا چرخش خودکار
   if (currentModel) rootGroup.rotation.y = modelYaw;
 
   // Label always faces camera
   if (labelSprite) labelSprite.quaternion.copy(camera.quaternion);
 
-  // ── HIT TEST ──────────────────────────────────────────────
-  if (frame && renderer.xr.isPresenting && !modelPlaced) {
+  // ── HIT-TEST ───────────────────────────────────────────────
+  if (frame && renderer.xr.isPresenting) {
     const session = renderer.xr.getSession();
     const refSpace = renderer.xr.getReferenceSpace();
 
-    // FIX: request hitTestSource only ONCE per session, not every frame
+    // Request hit-test source once per session
     if (!hitTestSourceRequested) {
-      hitTestSourceRequested = true; // guard immediately
+      hitTestSourceRequested = true;
 
       session.requestReferenceSpace("viewer").then((viewerSpace) => {
         session.requestHitTestSource({ space: viewerSpace }).then((src) => {
@@ -693,7 +708,6 @@ renderer.setAnimationLoop((_, frame) => {
         });
       });
 
-      // FIX: clean up when session ends (added once, not every frame)
       session.addEventListener(
         "end",
         () => {
@@ -706,11 +720,31 @@ renderer.setAnimationLoop((_, frame) => {
 
     if (hitTestSource) {
       const results = frame.getHitTestResults(hitTestSource);
+
       if (results.length > 0) {
-        reticle.visible = true;
+        // Update reticle pose
         reticle.matrix.fromArray(results[0].getPose(refSpace).transform.matrix);
+
+        if (!modelPlaced) {
+          // Show reticle while we wait for model to load
+          reticle.visible = true;
+
+          // Update hint to "tap to place" once surface found
+          if (arHint && arHint.textContent.includes("Scanning")) {
+            arHint.textContent = "👆 Tap to place";
+            arHint.style.display = "flex";
+          }
+
+          // AUTO-PLACE: as soon as model is ready, place it automatically
+          if (currentModel && !isLoading) {
+            placeModel();
+          }
+        } else {
+          // After placement, keep reticle hidden
+          reticle.visible = false;
+        }
       } else {
-        reticle.visible = false;
+        if (!modelPlaced) reticle.visible = false;
       }
     }
   }
