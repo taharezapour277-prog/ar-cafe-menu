@@ -9,9 +9,9 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 // =========================================
 const products = [
   {
-    name: "Pepperoni Pizza",
-    price: "$14",
-    description: "Pepperoni, mozzarella cheese, olives and mushroom.",
+    name: "پیتزا بیکن",
+    price: "680.000",
+    description: "بیکن 98%، قارچ، پنیر پیتزا و...",
     model: "./models/pizza.glb",
     orderLink: "https://yourcafe.com/order/pizza1",
   },
@@ -71,8 +71,8 @@ const camera = new THREE.PerspectiveCamera(
   0.01,
   20,
 );
-camera.position.set(0, -0.05, 0.8);
-
+camera.position.set(0, 0.3, 0.8);
+camera.lookAt(0, 0, 0);
 // =========================================
 // ENVIRONMENT
 // =========================================
@@ -536,7 +536,7 @@ function updateUI(index) {
   if (priceEl) priceEl.textContent = p.price;
   if (descEl) descEl.textContent = p.description;
   if (orderBtn) {
-    orderBtn.textContent = `🛒 Order ${p.name}`;
+    orderBtn.textContent = `🛒 سفارش ${p.name}`;
     orderBtn.onclick = () => window.open(p.orderLink, "_blank");
   }
   if (dotsEl) {
