@@ -432,10 +432,18 @@ renderer.domElement.addEventListener("click", (e) => {
 
   // Place model on reticle
   if (!modelPlaced && reticle.visible) {
-    rootGroup.position.setFromMatrixPosition(reticle.matrix);
+    // فقط موقعیت نبود → ماتریس کامل
+    rootGroup.matrix.copy(reticle.matrix);
+    rootGroup.matrix.decompose(
+      rootGroup.position,
+      rootGroup.quaternion,
+      rootGroup.scale,
+    );
+
     rootGroup.visible = true;
     reticle.visible = false;
     modelPlaced = true;
+
     if (arHint) arHint.style.display = "none";
   }
 });
@@ -449,16 +457,23 @@ function fitModel(model, isAR) {
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
 
-  // FIX: AR target size bumped to 0.30 so model is clearly visible
-  const target = isAR ? 0.3 : 0.38;
+  const target = isAR ? 0.32 : 0.38; // کمی بزرگتر کردم
   const scale = target / maxDim;
   model.scale.setScalar(scale);
 
-  // Recompute after scale so we get the correct min.y
+  // دوباره محاسبه بعد از scale
   const box2 = new THREE.Box3().setFromObject(model);
+
   model.position.x = -center.x * scale;
-  model.position.y = -box2.min.y; // sit flush on AR floor / pivot
-  model.position.z = isAR ? 0 : -1.1;
+  model.position.z = 0;
+
+  if (isAR) {
+    // === مهم: برای AR ===
+    model.position.y = -box2.min.y + 0.005; // 0.005 offset خیلی کمک می‌کنه
+  } else {
+    model.position.y = -box2.min.y;
+    model.position.z = -1.1;
+  }
 }
 
 // =========================================
