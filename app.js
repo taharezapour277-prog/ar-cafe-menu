@@ -9,7 +9,7 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 // =========================================
 const products = [
   {
-    name: "Pepperoni Pizza3",
+    name: "Pepperoni Pizza",
     price: "$14",
     description: "Pepperoni, mozzarella cheese, olives and mushroom.",
     model: "./models/pizza.glb",
