@@ -71,6 +71,7 @@ const camera = new THREE.PerspectiveCamera(
   0.01,
   20,
 );
+camera.position.set(0, 0.3, 0.8);
 
 // =========================================
 // ENVIRONMENT
@@ -435,11 +436,7 @@ renderer.domElement.addEventListener("click", (e) => {
     // 1. اول مدل رو کامل fit کن
     fitModel(currentModel, true);
 
-    // 2. موقعیت رتیکل رو بگیریم
-    const hitPosition = new THREE.Vector3();
-    hitPosition.setFromMatrixPosition(reticle.matrix);
-
-    // 3. rootGroup رو روی سطح قرار بده + چرخش سطح
+    // 2. قرار دادن rootGroup روی سطح شناسایی شده
     rootGroup.matrix.copy(reticle.matrix);
     rootGroup.matrix.decompose(
       rootGroup.position,
@@ -447,12 +444,7 @@ renderer.domElement.addEventListener("click", (e) => {
       rootGroup.scale,
     );
 
-    // 4. حالا موقعیت Y مدل رو نسبت به سطح تنظیم کن (مهم!)
-    // چون rootGroup روی سطح قرار گرفته، position.y مدل باید صفر باشه + offset
-    if (currentModel) {
-      currentModel.position.y = -currentModel.position.y + 0.008;
-      // یا اگر قبلاً مثبت شده، اینطوری جبران کن
-    }
+    // توجه: کدهای مخرب position.y از اینجا حذف شدند.
 
     rootGroup.visible = true;
     reticle.visible = false;
@@ -463,32 +455,33 @@ renderer.domElement.addEventListener("click", (e) => {
 });
 
 // =========================================
-// FIT MODEL - نسخه بهبود یافته
+// FIT MODEL - نسخه بهبود یافته و قطعی
 // =========================================
 function fitModel(model, isAR) {
+  // ریست کردن پوزیشن برای محاسبه دقیق باکس
+  model.position.set(0, 0, 0);
+  model.scale.setScalar(1);
+  model.updateMatrixWorld();
+
   const box = new THREE.Box3().setFromObject(model);
-  const center = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
 
   const targetSize = isAR ? 0.32 : 0.38;
   const scale = targetSize / maxDim;
   model.scale.setScalar(scale);
+  model.updateMatrixWorld();
 
-  // دوباره محاسبه بعد از scale
+  // محاسبه مجدد بعد از اسکیل شدن
   const boxAfter = new THREE.Box3().setFromObject(model);
+  const centerAfter = boxAfter.getCenter(new THREE.Vector3());
 
-  // centering X and Z
-  model.position.x = -center.x * scale;
-  model.position.z = 0;
+  // قرار دادن دقیق مدل در مرکز مختصات x و z
+  model.position.x = -centerAfter.x;
+  model.position.z = -centerAfter.z;
 
-  // خیلی مهم: مدل رو طوری تنظیم کنیم که کفش دقیقاً روی y=0 باشه
-  model.position.y = -boxAfter.min.y;
-
-  // offset خیلی کوچک برای جلوگیری از z-fighting یا sinking
-  if (isAR) {
-    model.position.y += 0.008;
-  }
+  // قرار دادن کفِ مدل دقیقاً روی سطح (y=0)
+  model.position.y = -boxAfter.min.y + (isAR ? 0.008 : 0);
 }
 
 // =========================================
@@ -674,7 +667,12 @@ renderer.setAnimationLoop((_, frame) => {
   const delta = clock.getDelta();
   if (mixer) mixer.update(delta);
 
-  // User rotation
+  // چرخش خودکار مدل فقط وقتی کاربر درگ نمی‌کند و در فضای AR نیستیم
+  if (!renderer.xr.isPresenting && !isDragging) {
+    modelYaw += delta * 0.3; // سرعت چرخش را اینجا تنظیم کنید
+  }
+
+  // اعمال چرخش به کاربر یا چرخش خودکار
   if (currentModel) rootGroup.rotation.y = modelYaw;
 
   // Label always faces camera
