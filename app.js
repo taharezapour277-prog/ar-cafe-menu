@@ -13,7 +13,7 @@ const products = [
     name: "Pepperoni Pizza",
     price: "$14",
     description: "Pepperoni, mozzarella cheese, olives and mushroom.",
-    model: "./pizza.glb",
+    model: "./models/pizza.glb",
     orderLink: "https://yourcafe.com/order/pizza1",
   },
   {
