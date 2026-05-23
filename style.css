@@ -1,70 +1,120 @@
+/* ═══════════════════════════════════════════════════════════════════
+   style.css — AR Cafe Menu
+   
+   ساختار کلی:
+     #ui-overlay        → لایه روی canvas (هم AR هم سایت)
+     #ar-panel          → پنل مخصوص AR (پایین صفحه، فقط در AR)
+     #bottom-panel      → پنل معمولی سایت (فقط خارج از AR)
+     #ar-hint           → پیام اسکن سطح (داخل AR)
+     #loadingIndicator  → اسپینر لودینگ
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ────────────────────────────────────────
+   ریست و پایه
+   ──────────────────────────────────────── */
 *,
 *::before,
 *::after {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
 }
 
+html,
 body {
-  overflow: hidden;
-  background: #0a0a0f;
-  font-family: "Segoe UI", system-ui, Arial, sans-serif;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* مدل باید تمام صفحه رو بگیره */
+  background: #0a0a12;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* Canvas three.js */
 canvas {
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
   display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
 }
 
-/* ── AR overlay root (required by WebXR dom-overlay) ── */
+/* ────────────────────────────────────────
+   لایه overlay — روی canvas
+   ──────────────────────────────────────── */
 #ui-overlay {
   position: fixed;
-  inset: 0;
-  pointer-events: none;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   z-index: 10;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
+  pointer-events: none; /* کلیک از زیر رد می‌شه مگه اینکه override بشه */
 }
 
-/* ── AR hint ── */
+/* ────────────────────────────────────────
+   نشانگر اسکن سطح در AR
+   ──────────────────────────────────────── */
 #ar-hint {
-  display: none;
+  display: none; /* در JS نمایش داده می‌شه */
   position: absolute;
-  top: 50%;
+
+  /* ── موقعیت عمودی ──────────────────────
+     اگه اعداد رو تغییر بدی:
+     top: 15%  → بالاتر می‌ره (نزدیک‌تر به بالای صفحه)
+     top: 35%  → پایین‌تر می‌ره (نزدیک مرکز)
+     بهترین مقدار برای دیده شدن بدون پوشوندن مدل: 20%-25%
+     ─────────────────────────────────────── */
+  top: 22%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(0, 0, 0, 0.68);
-  color: #fff;
+  transform: translateX(-50%);
+
+  background: rgba(10, 10, 20, 0.82);
+  color: #ffd86e;
   font-size: 15px;
-  letter-spacing: 0.01em;
-  padding: 11px 22px;
-  border-radius: 99px;
-  border: 1px solid rgba(255, 216, 110, 0.35);
+  font-weight: 600;
+  padding: 10px 22px;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 216, 110, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   white-space: nowrap;
   pointer-events: none;
+  align-items: center;
+  gap: 8px;
+
+  /* انیمیشن pulse برای جلب توجه */
+  animation: hintPulse 2s ease-in-out infinite;
 }
 
-/* ── Loading indicator ── */
+@keyframes hintPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translateX(-50%) scale(0.97);
+  }
+}
+
+/* ────────────────────────────────────────
+   اسپینر لودینگ
+   ──────────────────────────────────────── */
 #loadingIndicator {
-  display: none;
+  display: none; /* با کلاس .visible نمایش داده می‌شه */
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   pointer-events: none;
-  z-index: 20;
 }
+
 #loadingIndicator.visible {
   display: flex;
 }
@@ -73,20 +123,23 @@ canvas {
   display: flex;
   gap: 8px;
 }
+
 .loading-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   background: #ffd86e;
-  animation: bounce 0.9s infinite ease-in-out;
+  animation: dotBounce 1.2s ease-in-out infinite;
 }
+
 .loading-dot:nth-child(2) {
-  animation-delay: 0.15s;
+  animation-delay: 0.2s;
 }
 .loading-dot:nth-child(3) {
-  animation-delay: 0.3s;
+  animation-delay: 0.4s;
 }
-@keyframes bounce {
+
+@keyframes dotBounce {
   0%,
   80%,
   100% {
@@ -100,149 +153,474 @@ canvas {
 }
 
 .loading-label {
-  color: #ffd86e;
+  color: rgba(255, 255, 255, 0.7);
   font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.5px;
 }
 
-/* ── Bottom panel ── */
-#bottom-panel {
-  width: calc(100% - 32px);
-  max-width: 420px;
-  margin-bottom: 100px; /* space above WebXR button */
-  padding: 18px 20px 14px;
-  background: rgba(8, 8, 16, 0.84);
-  border: 1px solid rgba(255, 210, 80, 0.28);
-  border-radius: 24px;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+/* ════════════════════════════════════════════════════════════════════
+   #ar-panel — پنل مخصوص AR
+   این المان داخل #ui-overlay هست و فقط در حالت AR نمایش داده می‌شه.
+   کنترل نمایش: در app.js با arPanel.style.display = 'flex' / 'none'
+   ════════════════════════════════════════════════════════════════════ */
+#ar-panel {
+  display: none; /* پیش‌فرض مخفی — در JS باز می‌شه */
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  pointer-events: auto; /* حتماً باید auto باشه تا دکمه‌ها کار کنن */
+
+  /* ── فاصله از پایین صفحه ────────────────
+     padding-bottom: 24px  → فاصله از لبه پایین
+     اگه بزرگتر کنی: پنل بالاتر می‌مونه (برای notch/safe-area خوبه)
+     ─────────────────────────────────────── */
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+/* دکمه toggle بالای پنل */
+.ar-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 216, 110, 0.15);
+  border: 1px solid rgba(255, 216, 110, 0.5);
+  color: #ffd86e;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 7px 18px;
+  border-radius: 20px 20px 0 0;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: background 0.2s;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; /* مهم: بدون تاخیر 300ms روی موبایل */
+}
+
+.ar-toggle-btn:active {
+  background: rgba(255, 216, 110, 0.3);
+}
+
+#ar-toggle-icon {
+  font-size: 11px;
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+/* وقتی پنل بسته‌ست، آیکن rotate می‌شه */
+#ar-panel.collapsed #ar-toggle-icon {
+  transform: rotate(180deg);
+}
+
+/* محتوای داخلی پنل */
+#ar-details-panel {
+  width: 100%;
+
+  /* ── پس‌زمینه پنل AR ───────────────────
+     rgba(8, 8, 18, 0.88):
+       - عدد آخر opacity هست (0.88 = 88% مات)
+       - بیشتر: مات‌تر → مدل کمتر دیده می‌شه
+       - کمتر: شفاف‌تر → متن سخت‌تر خونده می‌شه
+     مقدار پیشنهادی: 0.82 - 0.92
+     ─────────────────────────────────────── */
+  background: rgba(8, 8, 18, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 216, 110, 0.25);
+
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  pointer-events: all;
-  transition: opacity 0.3s;
-}
+  align-items: center;
+  gap: 10px;
 
-/* hide panel when AR is active (label is shown in 3D) */
-#bottom-panel.ar-active {
-  display: none;
-}
-
-/* dots */
-#indexDots {
-  display: flex;
-  gap: 7px;
-  justify-content: center;
-  margin-bottom: 2px;
-}
-.dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.28);
+  /* ── پدینگ داخلی پنل ───────────────────
+     padding: 14px 20px 18px
+       14px بالا، 20px چپ/راست، 18px پایین
+     اگه بزرگتر کنی: فضای داخلی بیشتر، پنل بلندتر
+     ─────────────────────────────────────── */
+  padding: 14px 20px 18px;
+  overflow: hidden;
   transition:
-    background 0.3s,
-    transform 0.3s;
-}
-.dot.active {
-  background: #ffd86e;
-  transform: scale(1.25);
+    max-height 0.35s ease,
+    opacity 0.3s ease,
+    padding 0.3s ease;
+
+  /* ── ارتفاع باز پنل ────────────────────
+     max-height: 280px → حداکثر ارتفاع وقتی باز هست
+     اگه محتوا قطع شد: بزرگترش کن (مثلاً 320px)
+     ─────────────────────────────────────── */
+  max-height: 280px;
 }
 
-/* name + price row */
-.top-row {
+/* حالت collapsed */
+#ar-panel.collapsed #ar-details-panel {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+/* ردیف نام + قیمت */
+.ar-top-row {
   display: flex;
-  align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
-}
-#name {
-  color: #ffd86e;
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-#price {
-  color: #fff;
-  font-size: 18px;
-  font-weight: 700;
-  white-space: nowrap;
-  background: rgba(255, 216, 110, 0.12);
-  border: 1px solid rgba(255, 216, 110, 0.35);
-  border-radius: 10px;
-  padding: 2px 10px;
+  align-items: center;
+  width: 100%;
 }
 
-#description {
-  color: rgba(255, 255, 255, 0.65);
+.ar-product-name {
+  color: #ffd86e;
+  font-size: 18px; /* ← افزایش: متن نام بزرگتر */
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.ar-product-price {
+  color: #ffffff;
+  font-size: 20px; /* ← قیمت کمی بزرگتر از نام */
+  font-weight: 800;
+  background: rgba(255, 216, 110, 0.12);
+  padding: 3px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 216, 110, 0.3);
+}
+
+/* توضیح محصول */
+.ar-desc-text {
+  color: rgba(255, 255, 255, 0.72);
   font-size: 13px;
   line-height: 1.5;
+  text-align: center;
+  max-width: 90%;
 }
 
-/* nav row */
+/* ردیف ناوبری */
+.ar-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+}
+
+/* دکمه‌های قبلی/بعدی AR */
+.ar-nav-btn {
+  /* ── سایز دکمه‌های ناوبری AR ───────────
+     width/height: 48px → اندازه کلیک‌پذیر
+     اگه کوچک‌تر کنی زیر 44px: انگشت به سختی می‌زنه
+     font-size: 28px → اندازه آیکن داخل دکمه
+     ─────────────────────────────────────── */
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255, 216, 110, 0.15);
+  border: 2px solid rgba(255, 216, 110, 0.6);
+  color: #ffd86e;
+  font-size: 28px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+  line-height: 1;
+  user-select: none;
+}
+
+.ar-nav-btn:active {
+  background: rgba(255, 216, 110, 0.4);
+  transform: scale(0.92);
+}
+
+/* نقاط ناوبری AR */
+.ar-dots-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ar-dot {
+  /* ── اندازه نقطه ──────────────────────
+     width/height: 8px → نقطه معمولی
+     اگه بزرگتر کنی: نقطه active برجسته‌تر
+     ─────────────────────────────────────── */
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transition: all 0.25s ease;
+}
+
+.ar-dot.active {
+  background: #ffd86e;
+  width: 24px; /* نقطه active به شکل pill در می‌آد */
+  border-radius: 4px;
+}
+
+/* دکمه سفارش AR */
+.ar-order-btn {
+  width: 100%;
+  max-width: 320px;
+  padding: 13px 20px;
+  background: linear-gradient(135deg, #ffd86e 0%, #ffa500 100%);
+  color: #0a0a12;
+  font-size: 15px;
+  font-weight: 800;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+  box-shadow: 0 4px 20px rgba(255, 165, 0, 0.35);
+}
+
+.ar-order-btn:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 10px rgba(255, 165, 0, 0.25);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   #bottom-panel — پنل معمولی سایت (خارج از AR)
+   ════════════════════════════════════════════════════════════════════ */
+#bottom-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+
+  /* ── پس‌زمینه پنل سایت ──────────────────
+     gradient از شفاف به تیره:
+     transparent → rgba(8,8,18,0.97)
+     اگه اول رو مات‌تر کنی: زیر مدل دیده نمی‌شه
+     ─────────────────────────────────────── */
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(8, 8, 18, 0.6) 25%,
+    rgba(8, 8, 18, 0.97) 55%
+  );
+  pointer-events: auto;
+  padding: 60px 24px 28px; /* پدینگ بالا gradient رو می‌سازه */
+  padding-bottom: max(28px, env(safe-area-inset-bottom));
+}
+
+/* نقاط ناوبری سایت */
+#indexDots {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transition: all 0.25s ease;
+}
+
+.dot.active {
+  background: #ffd86e;
+  width: 24px;
+  border-radius: 4px;
+}
+
+/* ردیف نام + قیمت سایت */
+.top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 500px;
+}
+
+#name {
+  color: #ffd86e;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+#price {
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+/* توضیح سایت */
+#description {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 14px;
+  line-height: 1.55;
+  text-align: center;
+  max-width: 400px;
+}
+
+/* ردیف دکمه‌های ناوبری سایت */
 .nav-row {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   justify-content: center;
-  margin-top: 4px;
+  width: 100%;
+  max-width: 360px;
 }
+
+/* دکمه‌های قبلی/بعدی سایت */
 .switch-btn {
   flex: 1;
-  background: rgba(255, 210, 80, 0.1);
-  border: 1px solid rgba(255, 210, 80, 0.35);
-  color: #ffd86e;
+  padding: 11px 0;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
   font-size: 14px;
   font-weight: 600;
   border-radius: 12px;
-  padding: 9px 0;
   cursor: pointer;
-  transition: background 0.2s;
-  pointer-events: all;
-}
-.switch-btn:active {
-  background: rgba(255, 210, 80, 0.28);
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-/* order button */
+.switch-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 216, 110, 0.5);
+}
+
+.switch-btn:active {
+  background: rgba(255, 216, 110, 0.15);
+}
+
+/* دکمه سفارش سایت */
 #orderBtn {
-  background: linear-gradient(135deg, #ffd86e 0%, #ffa940 100%);
-  color: #1a0800;
-  font-size: 15px;
-  font-weight: 700;
+  width: 100%;
+  max-width: 360px;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #ffd86e 0%, #ffa500 100%);
+  color: #0a0a12;
+  font-size: 16px;
+  font-weight: 800;
   border: none;
   border-radius: 14px;
-  padding: 12px 0;
-  width: 100%;
   cursor: pointer;
-  margin-top: 2px;
-  pointer-events: all;
+  letter-spacing: 0.3px;
   transition:
-    opacity 0.2s,
-    transform 0.15s;
-}
-#orderBtn:active {
-  opacity: 0.82;
-  transform: scale(0.98);
+    transform 0.15s,
+    box-shadow 0.15s;
+  box-shadow: 0 4px 24px rgba(255, 165, 0, 0.4);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-/* brand */
-.brand {
-  text-align: center;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.3);
-  margin-top: 2px;
+#orderBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 28px rgba(255, 165, 0, 0.5);
 }
+
+#orderBtn:active {
+  transform: scale(0.97);
+}
+
+/* برند */
+.brand {
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 11px;
+  text-align: center;
+}
+
 .brand a {
-  color: rgba(255, 216, 110, 0.55);
+  color: rgba(255, 216, 110, 0.6);
   text-decoration: none;
 }
 
-/* ── WebXR button override (keep it above panel) ── */
+/* ════════════════════════════════════════════════════════════════════
+   دکمه Enter AR (ساخته شده توسط ARButton.createButton)
+   این دکمه توسط three.js ساخته می‌شه، با این استایل override می‌شه
+   ════════════════════════════════════════════════════════════════════ */
 #ARButton {
   position: fixed !important;
-  bottom: 24px !important;
+
+  /* ── موقعیت دکمه AR ─────────────────────
+     bottom: 28px → فاصله از پایین
+     اگه بزرگتر کنی: دکمه بالاتر می‌ره
+     ─────────────────────────────────────── */
+  bottom: 28px !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
+  right: unset !important;
+
+  background: rgba(255, 216, 110, 0.15) !important;
+  border: 2px solid rgba(255, 216, 110, 0.7) !important;
+  color: #ffd86e !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  padding: 12px 30px !important;
+  border-radius: 30px !important;
+  cursor: pointer !important;
+  letter-spacing: 0.5px !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
   z-index: 100 !important;
+  transition: background 0.2s !important;
+  white-space: nowrap !important;
+}
+
+#ARButton:hover {
+  background: rgba(255, 216, 110, 0.3) !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   ریسپانسیو — صفحه‌های بزرگتر (تبلت/دسکتاپ)
+   ════════════════════════════════════════════════════════════════════ */
+@media (min-width: 600px) {
+  #bottom-panel,
+  #ar-panel {
+    max-width: 560px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    border-radius: 20px 20px 0 0;
+  }
+
+  #ar-panel {
+    /* ── در تبلت، پنل AR کمی شناور ───────
+       اگه bottom رو عوض کنی:
+       bottom: 0 → چسبیده به پایین
+       bottom: 20px → کمی شناور بالای پایین
+       ─────────────────────────────────────── */
+    bottom: 0;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   اسکرول‌بار پنهان (جلوگیری از overflow ناخواسته)
+   ════════════════════════════════════════════════════════════════════ */
+::-webkit-scrollbar {
+  display: none;
+}
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

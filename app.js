@@ -32,7 +32,7 @@ const products = [
 ];
 
 // =========================================
-// DOM REFS
+// DOM REFS — پنل سایت
 // =========================================
 const nameEl = document.getElementById("name");
 const priceEl = document.getElementById("price");
@@ -42,6 +42,21 @@ const dotsEl = document.getElementById("indexDots");
 const loadingEl = document.getElementById("loadingIndicator");
 const bottomPanel = document.getElementById("bottom-panel");
 const arHint = document.getElementById("ar-hint");
+
+// =========================================
+// DOM REFS — پنل AR
+// =========================================
+const arPanel = document.getElementById("ar-panel");
+const arNameEl = document.getElementById("ar-name");
+const arPriceEl = document.getElementById("ar-price");
+const arDescEl = document.getElementById("ar-desc");
+const arOrderBtn = document.getElementById("ar-orderBtn");
+const arDotsEl = document.getElementById("ar-dots");
+const arToggleBtn = document.getElementById("ar-toggle-btn");
+const arToggleIcon = document.getElementById("ar-toggle-icon");
+const arToggleLabel = document.getElementById("ar-toggle-label");
+const arPrevBtn = document.getElementById("ar-prevBtn");
+const arNextBtn = document.getElementById("ar-nextBtn");
 
 // =========================================
 // RENDERER
@@ -55,7 +70,15 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+/* ── ToneMappingExposure ──────────────────────────────────────────────
+   مقدار پیش‌فرض: 1.0
+   بیشتر از 1 (مثلاً 1.3): مدل روشن‌تر، رنگ‌ها saturated‌تر
+   کمتر از 1 (مثلاً 0.8): تیره‌تر، واقع‌گرایانه‌تر برای AR در فضای باز
+   در AR اگه محیط روشن هست، 0.9 بهتره
+   ─────────────────────────────────────────────────────────────────── */
 renderer.toneMappingExposure = 1.0;
+
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.xr.enabled = true;
@@ -66,11 +89,24 @@ document.body.appendChild(renderer.domElement);
 // =========================================
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
+  /* ── FOV ─────────────────────────────────
+     70: زاویه دید دوربین در حالت غیر-AR
+     بزرگتر (مثلاً 80): مدل کوچیک‌تر دیده می‌شه
+     کوچیک‌تر (مثلاً 55): مدل بزرگتر/فشرده‌تر
+     ─────────────────────────────────────── */
   70,
   window.innerWidth / window.innerHeight,
   0.01,
   20,
 );
+
+/* ── موقعیت دوربین غیر-AR ─────────────────
+   camera.position.set(x, y, z)
+   z = 0.8: فاصله دوربین از مدل
+     کمتر (0.5): نزدیک‌تر → مدل بزرگتر
+     بیشتر (1.2): دورتر → مدل کوچیک‌تر
+   y = -0.05: دوربین کمی پایین‌تر از مرکز → مدل بالاتر دیده می‌شه
+   ─────────────────────────────────────── */
 camera.position.set(0, -0.05, 0.8);
 
 // =========================================
@@ -86,8 +122,18 @@ pmremGenerator.dispose();
 // =========================================
 // LIGHTS
 // =========================================
+
+/* ── AmbientLight intensity ───────────────
+   0.5: نور محیطی پایه
+   بیشتر (0.8): سایه‌ها کمتر → مدل یکنواخت‌تر
+   کمتر (0.2): کنتراست بیشتر، سایه‌های تندتر
+   ─────────────────────────────────────── */
 scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
+/* ── keyLight (نور اصلی) ─────────────────
+   intensity: 2.0 → بیشتر: روشن‌تر، سایه‌های تندتر
+   position.set(3, 6, 4) → موقعیت: بالا-راست-جلو
+   ─────────────────────────────────────── */
 const keyLight = new THREE.DirectionalLight(0xfff5e0, 2.0);
 keyLight.position.set(3, 6, 4);
 keyLight.castShadow = true;
@@ -96,10 +142,18 @@ keyLight.shadow.mapSize.height = 2048;
 keyLight.shadow.bias = -0.001;
 scene.add(keyLight);
 
+/* ── fillLight (نور پرکننده) ─────────────
+   intensity: 0.8 → سایه‌های تاریک رو روشن می‌کنه
+   کمتر (0.3): سایه‌های عمیق‌تر → dramatic
+   ─────────────────────────────────────── */
 const fillLight = new THREE.DirectionalLight(0xc8e0ff, 0.8);
 fillLight.position.set(-4, 2, -3);
 scene.add(fillLight);
 
+/* ── rimLight (نور لبه) ──────────────────
+   intensity: 1.2 → جدا کردن مدل از پس‌زمینه
+   بیشتر: لبه‌های مدل روشن‌تر → دیده شدن بهتر در AR
+   ─────────────────────────────────────── */
 const rimLight = new THREE.DirectionalLight(0xffd699, 1.2);
 rimLight.position.set(0, 3, -5);
 scene.add(rimLight);
@@ -108,7 +162,7 @@ scene.add(rimLight);
 // ROOT GROUP
 // =========================================
 const rootGroup = new THREE.Group();
-rootGroup.matrixAutoUpdate = true; // use position/quaternion/scale, NOT raw matrix
+rootGroup.matrixAutoUpdate = true;
 scene.add(rootGroup);
 rootGroup.visible = true;
 
@@ -118,6 +172,10 @@ rootGroup.visible = true;
 let currentIndex = 0;
 
 function makeTextCanvas(product) {
+  /* ── اندازه canvas لیبل ──────────────────
+     W=512, H=230: عرض و ارتفاع texture لیبل
+     بزرگتر: وضوح بیشتر، حجم بیشتر
+     ─────────────────────────────────────── */
   const W = 512,
     H = 230;
   const canvas = document.createElement("canvas");
@@ -138,6 +196,12 @@ function makeTextCanvas(product) {
   ctx.lineTo(0, r);
   ctx.quadraticCurveTo(0, 0, r, 0);
   ctx.closePath();
+
+  /* ── پس‌زمینه لیبل ────────────────────────
+     rgba(10, 10, 18, 0.88): عدد آخر opacity
+     0.88 = 88% مات → برای خوانایی بهتره
+     در AR: اگه محیط شلوغه 0.95 بزن
+     ─────────────────────────────────────── */
   ctx.fillStyle = "rgba(10, 10, 18, 0.88)";
   ctx.fill();
   ctx.strokeStyle = "rgba(255, 200, 80, 0.6)";
@@ -153,6 +217,7 @@ function makeTextCanvas(product) {
   ctx.font = "bold 36px 'Segoe UI', Arial, sans-serif";
   ctx.fillText(product.price, W / 2, 104);
 
+  /* نقاط ناوبری در لیبل ۳D */
   const dotY = 142,
     dotR = 7,
     spacing = 24;
@@ -201,6 +266,13 @@ function createOrUpdateLabel(product) {
     labelSprite.material.map = tex;
     labelSprite.material.needsUpdate = true;
   }
+
+  /* ── اندازه لیبل ۳D ──────────────────────
+     h = 0.2: ارتفاع لیبل به متر در فضای AR
+       0.2 = 20 سانتی‌متر
+       بزرگتر (0.28): لیبل بزرگتر، بیشتر توجه می‌گیره
+       کوچیک‌تر (0.14): ظریف‌تر، کمتر محیط رو می‌پوشونه
+     ─────────────────────────────────────── */
   const aspect = 512 / 230;
   const h = 0.2;
   labelSprite.scale.set(h * aspect, h, 1);
@@ -209,11 +281,19 @@ function createOrUpdateLabel(product) {
 function positionLabel() {
   if (!labelSprite || !currentModel) return;
   const box = new THREE.Box3().setFromObject(currentModel);
+
+  /* ── فاصله لیبل از بالای مدل ─────────────
+     box.max.y + 0.16:
+       0.16 = 16 سانتی‌متر فاصله از بالای مدل
+       بیشتر: لیبل بالاتر (فضای بیشتر برای دیدن مدل)
+       کمتر: لیبل چسبیده‌تر به مدل
+       پیشنهاد: 0.14 تا 0.22 بسته به اندازه مدل
+     ─────────────────────────────────────── */
   labelSprite.position.set(0, box.max.y + 0.16, 0);
 }
 
 // =========================================
-// AR NAV ARROWS
+// AR NAV ARROWS (فقط به عنوان visual hint — ناوبری اصلی با دکمه‌های 2D)
 // =========================================
 function makeArrowCanvas(dir) {
   const S = 160;
@@ -253,7 +333,15 @@ function createARArrows() {
         depthTest: false,
       }),
     );
-    sprite.scale.set(0.1, 0.1, 1);
+
+    /* ── اندازه فلش‌های AR ────────────────────
+       scale.set(0.08, 0.08, 1):
+         0.08 = 8 سانتی‌متر
+         بزرگتر: بیشتر دیده می‌شن اما فضا می‌گیرن
+         کوچیک‌تر: ظریف‌تر
+       این فلش‌ها فقط visual هستن — ناوبری اصلی با دکمه‌های پایین پنل
+       ─────────────────────────────────────── */
+    sprite.scale.set(0.08, 0.08, 1);
     sprite.userData.navDir = dir;
     rootGroup.add(sprite);
     if (dir === "prev") prevArrow = sprite;
@@ -273,7 +361,16 @@ function positionARArrows() {
 // =========================================
 // RETICLE
 // =========================================
-const reticleGeo = new THREE.RingGeometry(0.09, 0.115, 48);
+const reticleGeo = new THREE.RingGeometry(
+  /* ── اندازه reticle (دایره اسکن) ──────────
+     0.09: شعاع داخلی
+     0.115: شعاع خارجی
+     بزرگتر: راحت‌تر دیده می‌شه روی سطح
+     ─────────────────────────────────────── */
+  0.09,
+  0.115,
+  48,
+);
 reticleGeo.rotateX(-Math.PI / 2);
 const reticle = new THREE.Mesh(
   reticleGeo,
@@ -330,13 +427,79 @@ function hideLoading() {
 }
 
 // =========================================
+// AR PANEL — نمایش و مخفی‌کردن
+// =========================================
+function showARPanel() {
+  if (!arPanel) return;
+  arPanel.style.display = "flex";
+  // حالت پیش‌فرض: جزئیات نمایش داده می‌شن
+  arPanel.classList.remove("collapsed");
+  if (arToggleIcon) arToggleIcon.textContent = "▼";
+  if (arToggleLabel) arToggleLabel.textContent = "پنهان";
+}
+
+function hideARPanel() {
+  if (!arPanel) return;
+  arPanel.style.display = "none";
+}
+
+// =========================================
+// AR PANEL TOGGLE — پنهان/نمایش جزئیات
+// =========================================
+let arDetailsVisible = true;
+
+function toggleARDetails() {
+  arDetailsVisible = !arDetailsVisible;
+  if (arDetailsVisible) {
+    arPanel.classList.remove("collapsed");
+    if (arToggleIcon) arToggleIcon.textContent = "▼";
+    if (arToggleLabel) arToggleLabel.textContent = "پنهان";
+  } else {
+    arPanel.classList.add("collapsed");
+    if (arToggleIcon) arToggleIcon.textContent = "▲";
+    if (arToggleLabel) arToggleLabel.textContent = "جزئیات";
+  }
+}
+
+arToggleBtn?.addEventListener("click", toggleARDetails);
+
+// =========================================
+// AR NAVIGATION BUTTONS
+// دکمه‌های AR داخل dom-overlay هستن و مستقیم کار می‌کنن
+// =========================================
+arPrevBtn?.addEventListener("click", (e) => {
+  e.stopPropagation(); // جلوگیری از trigger شدن select event
+  navigate(-1);
+});
+
+arNextBtn?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  navigate(1);
+});
+
+// =========================================
+// AR ORDER BUTTON
+// =========================================
+arOrderBtn?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const p = products[currentIndex];
+  window.open(p.orderLink, "_blank");
+});
+
+// =========================================
 // GESTURE: single-finger drag → rotate Y
 // =========================================
 let isDragging = false;
 let prevX = 0;
 let modelYaw = 0;
 let dragMoved = false;
-const DRAG_THRESHOLD = 8; // px
+
+/* ── آستانه تشخیص drag ────────────────────
+   DRAG_THRESHOLD = 8 پیکسل:
+   کمتر (4): حرکت‌های کوچیک هم drag محسوب می‌شن → ممکنه کلیک‌ها ناخواسته rotate کنن
+   بیشتر (15): باید بیشتر بکشی تا rotate شه
+   ─────────────────────────────────────── */
+const DRAG_THRESHOLD = 8;
 
 function onDragStart(x) {
   isDragging = true;
@@ -347,6 +510,12 @@ function onDragMove(x) {
   if (!isDragging || !currentModel) return;
   const dx = x - prevX;
   if (Math.abs(dx) > DRAG_THRESHOLD) dragMoved = true;
+
+  /* ── سرعت چرخش با drag ──────────────────
+     0.012: هر پیکسل حرکت = 0.012 رادیان چرخش
+     بیشتر (0.02): تند می‌چرخه
+     کمتر (0.006): آرام می‌چرخه
+     ─────────────────────────────────────── */
   modelYaw += dx * 0.012;
   prevX = x;
 }
@@ -385,9 +554,15 @@ renderer.domElement.addEventListener(
   "touchend",
   (e) => {
     onDragEnd();
-    // Swipe navigation — non-AR only
+    // swipe navigation فقط در غیر-AR
     if (!renderer.xr.isPresenting) {
       const dx = e.changedTouches[0].clientX - touchStartX;
+
+      /* ── آستانه swipe ─────────────────────
+       55 پیکسل: باید حداقل این مقدار swipe کنی
+       کمتر (35): حساس‌تر
+       بیشتر (80): نیاز به swipe قوی‌تر
+       ─────────────────────────────────────── */
       if (Math.abs(dx) > 55 && !dragMoved) navigate(dx < 0 ? 1 : -1);
     }
   },
@@ -396,13 +571,9 @@ renderer.domElement.addEventListener(
 
 // =========================================
 // PLACE MODEL AT RETICLE POSITION
-// This is called both from auto-placement and manual select.
 // =========================================
 function placeModel() {
   if (!reticle.visible || !currentModel) return;
-
-  // Decompose the reticle's world matrix into rootGroup's
-  // position / quaternion / scale — safe with matrixAutoUpdate = true
   const pos = new THREE.Vector3();
   const quat = new THREE.Quaternion();
   const scl = new THREE.Vector3();
@@ -410,28 +581,30 @@ function placeModel() {
 
   rootGroup.position.copy(pos);
   rootGroup.quaternion.copy(quat);
-  rootGroup.scale.set(1, 1, 1); // scale is handled by fitModel, not reticle
+  rootGroup.scale.set(1, 1, 1);
 
   rootGroup.visible = true;
   reticle.visible = false;
   modelPlaced = true;
 
   if (arHint) arHint.style.display = "none";
+
+  // وقتی مدل گذاشته شد، پنل AR رو نمایش بده
+  showARPanel();
 }
 
 // =========================================
-// AR SELECT EVENT  (WebXR tap — replaces unreliable click on canvas)
+// AR SELECT EVENT
 // =========================================
 function onARSelect() {
   if (dragMoved) return;
 
-  // Allow re-placement: reset and show reticle again,
-  // then place when reticle is visible
   if (modelPlaced) {
-    // Second tap → re-place (optional UX)
+    // ضربه دوم → re-place
     modelPlaced = false;
     reticle.visible = true;
     rootGroup.visible = false;
+    hideARPanel();
     if (arHint) {
       arHint.textContent = "👆 Tap again to re-place";
       arHint.style.display = "flex";
@@ -443,16 +616,14 @@ function onARSelect() {
 }
 
 // =========================================
-// NON-AR CLICK: raycast AR arrows (desktop/non-AR fallback)
+// NON-AR CLICK: raycast AR arrows
 // =========================================
 const _raycaster = new THREE.Raycaster();
 const _mouse = new THREE.Vector2();
 
 renderer.domElement.addEventListener("click", (e) => {
-  // In AR, we use the XR select event above — skip click handling
   if (renderer.xr.isPresenting) return;
   if (dragMoved) return;
-
   _mouse.set(
     (e.clientX / window.innerWidth) * 2 - 1,
     (e.clientY / window.innerHeight) * -2 + 1,
@@ -478,6 +649,14 @@ function fitModel(model, isAR) {
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
 
+  /* ── اندازه هدف مدل ──────────────────────
+     isAR: targetSize = 0.32 متر (32 سانتی‌متر)
+       بزرگتر (0.45): مدل AR بزرگتر، جزئیات بیشتر دیده می‌شه
+       کوچیک‌تر (0.22): مدل AR کوچیک‌تر، واقع‌بینانه‌تر
+     !isAR: targetSize = 0.38 متر (در صفحه نمایش)
+       بزرگتر (0.50): مدل بیشتر صفحه رو می‌گیره
+       کوچیک‌تر (0.28): فضای بیشتر دور مدل
+     ─────────────────────────────────────── */
   const targetSize = isAR ? 0.32 : 0.38;
   const scale = maxDim > 0 ? targetSize / maxDim : 1;
   model.scale.setScalar(scale);
@@ -485,10 +664,16 @@ function fitModel(model, isAR) {
 
   const boxAfter = new THREE.Box3().setFromObject(model);
   const centerAfter = boxAfter.getCenter(new THREE.Vector3());
-
   model.position.x = -centerAfter.x;
   model.position.z = -centerAfter.z;
-  // Bottom of model sits on y = 0
+
+  /* ── ارتفاع مدل روی سطح ──────────────────
+     isAR ? 0.008 : 0
+       0.008 = 8 میلی‌متر بالاتر از سطح در AR
+       این جلوگیری می‌کنه مدل داخل سطح بره (z-fighting)
+       بیشتر (0.02): مدل شناورتر
+       صفر: دقیقاً روی سطح
+     ─────────────────────────────────────── */
   model.position.y = -boxAfter.min.y + (isAR ? 0.008 : 0);
 }
 
@@ -528,10 +713,12 @@ function clearModel() {
 }
 
 // =========================================
-// UPDATE 2-D UI
+// UPDATE 2-D UI — هر دو پنل با هم آپدیت می‌شن
 // =========================================
 function updateUI(index) {
   const p = products[index];
+
+  // --- پنل سایت ---
   if (nameEl) nameEl.textContent = p.name;
   if (priceEl) priceEl.textContent = p.price;
   if (descEl) descEl.textContent = p.description;
@@ -542,6 +729,19 @@ function updateUI(index) {
   if (dotsEl) {
     [...dotsEl.children].forEach((d, i) => {
       d.className = "dot" + (i === index ? " active" : "");
+    });
+  }
+
+  // --- پنل AR ---
+  if (arNameEl) arNameEl.textContent = p.name;
+  if (arPriceEl) arPriceEl.textContent = p.price;
+  if (arDescEl) arDescEl.textContent = p.description;
+  if (arOrderBtn) {
+    arOrderBtn.textContent = `🛒 Order ${p.name}`;
+  }
+  if (arDotsEl) {
+    [...arDotsEl.children].forEach((d, i) => {
+      d.className = "ar-dot" + (i === index ? " active" : "");
     });
   }
 }
@@ -574,13 +774,9 @@ function loadProduct(index) {
     hideLoading();
     isLoading = false;
 
-    // ── KEY FIX ──────────────────────────────────────────────
-    // In AR, if reticle is already visible (surface already found),
-    // auto-place immediately so the user sees the model right away.
     if (isAR && reticle.visible && !modelPlaced) {
       placeModel();
     }
-    // ─────────────────────────────────────────────────────────
   };
 
   loader.load(
@@ -594,10 +790,10 @@ function loadProduct(index) {
       onLoaded(gltf.scene);
     },
 
-    undefined, // progress callback not needed
+    undefined,
 
     () => {
-      // Fallback geometry when .glb is missing
+      // fallback geometry وقتی .glb نیست
       const g = new THREE.Group();
       const base = new THREE.Mesh(
         new THREE.CylinderGeometry(0.18, 0.18, 0.03, 40),
@@ -639,20 +835,25 @@ renderer.xr.addEventListener("sessionstart", () => {
   hitTestSource = null;
   hitTestSourceRequested = false;
   modelPlaced = false;
+  arDetailsVisible = true;
 
   rootGroup.visible = false;
-  reticle.visible = false; // hidden until first hit-test result
+  reticle.visible = false;
 
   if (arHint) {
     arHint.textContent = "🔍 Scanning for a surface…";
     arHint.style.display = "flex";
   }
+
+  // پنل سایت رو مخفی کن
   if (bottomPanel) bottomPanel.style.display = "none";
+
+  // پنل AR هنوز مخفیه — بعد از placement نمایش داده می‌شه
+  hideARPanel();
 
   clearModel();
   loadProduct(currentIndex);
 
-  // ── Attach WebXR select listener (reliable tap in AR) ──────
   const session = renderer.xr.getSession();
   session.addEventListener("select", onARSelect);
 });
@@ -669,6 +870,9 @@ renderer.xr.addEventListener("sessionend", () => {
   rootGroup.visible = true;
 
   if (arHint) arHint.style.display = "none";
+
+  // پنل AR رو مخفی، پنل سایت رو نمایش بده
+  hideARPanel();
   if (bottomPanel) bottomPanel.style.display = "flex";
 
   clearModel();
@@ -684,21 +888,24 @@ renderer.setAnimationLoop((_, frame) => {
   const delta = clock.getDelta();
   if (mixer) mixer.update(delta);
 
-  // Auto-rotate only in non-AR
+  /* ── سرعت چرخش خودکار غیر-AR ─────────────
+     delta * 0.3 = 0.3 رادیان در ثانیه
+     بیشتر (0.6): چرخش سریع‌تر
+     کمتر (0.1): چرخش آهسته‌تر
+     صفر (0): متوقف می‌شه
+     ─────────────────────────────────────── */
   if (!renderer.xr.isPresenting && !isDragging) {
     modelYaw += delta * 0.3;
   }
   if (currentModel) rootGroup.rotation.y = modelYaw;
 
-  // Label always faces camera
   if (labelSprite) labelSprite.quaternion.copy(camera.quaternion);
 
-  // ── HIT-TEST ───────────────────────────────────────────────
+  // ── HIT-TEST ──────────────────────────────────────────────
   if (frame && renderer.xr.isPresenting) {
     const session = renderer.xr.getSession();
     const refSpace = renderer.xr.getReferenceSpace();
 
-    // Request hit-test source once per session
     if (!hitTestSourceRequested) {
       hitTestSourceRequested = true;
 
@@ -722,25 +929,20 @@ renderer.setAnimationLoop((_, frame) => {
       const results = frame.getHitTestResults(hitTestSource);
 
       if (results.length > 0) {
-        // Update reticle pose
         reticle.matrix.fromArray(results[0].getPose(refSpace).transform.matrix);
 
         if (!modelPlaced) {
-          // Show reticle while we wait for model to load
           reticle.visible = true;
 
-          // Update hint to "tap to place" once surface found
           if (arHint && arHint.textContent.includes("Scanning")) {
             arHint.textContent = "👆 Tap to place";
             arHint.style.display = "flex";
           }
 
-          // AUTO-PLACE: as soon as model is ready, place it automatically
           if (currentModel && !isLoading) {
             placeModel();
           }
         } else {
-          // After placement, keep reticle hidden
           reticle.visible = false;
         }
       } else {
@@ -764,13 +966,22 @@ window.addEventListener("resize", () => {
 });
 
 // =========================================
-// INIT
+// INIT — ساخت نقاط ناوبری
 // =========================================
 if (dotsEl) {
   products.forEach((_, i) => {
     const d = document.createElement("div");
     d.className = "dot" + (i === 0 ? " active" : "");
     dotsEl.appendChild(d);
+  });
+}
+
+// نقاط ناوبری پنل AR
+if (arDotsEl) {
+  products.forEach((_, i) => {
+    const d = document.createElement("div");
+    d.className = "ar-dot" + (i === 0 ? " active" : "");
+    arDotsEl.appendChild(d);
   });
 }
 
