@@ -32,6 +32,18 @@ const products = [
 ];
 
 // =========================================
+// DOM REFS
+// =========================================
+const nameEl = document.getElementById("name");
+const priceEl = document.getElementById("price");
+const descEl = document.getElementById("description");
+const orderBtn = document.getElementById("orderBtn");
+const dotsEl = document.getElementById("indexDots");
+const loadingEl = document.getElementById("loadingIndicator");
+const bottomPanel = document.getElementById("bottom-panel");
+const arHint = document.getElementById("ar-hint");
+
+// =========================================
 // RENDERER
 // =========================================
 const renderer = new THREE.WebGLRenderer({
@@ -74,6 +86,7 @@ pmremGenerator.dispose();
 // LIGHTS
 // =========================================
 scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
 const keyLight = new THREE.DirectionalLight(0xfff5e0, 2.0);
 keyLight.position.set(3, 6, 4);
 keyLight.castShadow = true;
@@ -81,32 +94,39 @@ keyLight.shadow.mapSize.width = 2048;
 keyLight.shadow.mapSize.height = 2048;
 keyLight.shadow.bias = -0.001;
 scene.add(keyLight);
-const fillLight = new THREE.DirectionalLight(0xc8e0ff, 0.8);
-fillLight.position.set(-4, 2, -3);
-scene.add(fillLight);
-const rimLight = new THREE.DirectionalLight(0xffd699, 1.2);
-rimLight.position.set(0, 3, -5);
-scene.add(rimLight);
+
+scene.add(
+  Object.assign(new THREE.DirectionalLight(0xc8e0ff, 0.8), {
+    position: new THREE.Vector3(-4, 2, -3),
+  }),
+);
+scene.add(
+  Object.assign(new THREE.DirectionalLight(0xffd699, 1.2), {
+    position: new THREE.Vector3(0, 3, -5),
+  }),
+);
 
 // =========================================
-// ROOT GROUP (model + label all move together)
+// ROOT GROUP  (model + 3-D label move together)
 // =========================================
 const rootGroup = new THREE.Group();
 scene.add(rootGroup);
-rootGroup.visible = false; // hidden until placed in AR, or shown in non-AR
+rootGroup.visible = true; // visible in non-AR from the start
 
 // =========================================
-// 3D FLOATING LABEL (CSS2DRenderer alternative — pure Three.js Sprite)
+// 3-D FLOATING LABEL
 // =========================================
+let currentIndex = 0; // declared early — needed by makeTextCanvas
+
 function makeTextCanvas(product) {
   const W = 512,
-    H = 220;
+    H = 230;
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d");
 
-  // Background rounded rect
+  // Rounded background
   ctx.clearRect(0, 0, W, H);
   const r = 28;
   ctx.beginPath();
@@ -120,61 +140,68 @@ function makeTextCanvas(product) {
   ctx.lineTo(0, r);
   ctx.quadraticCurveTo(0, 0, r, 0);
   ctx.closePath();
-  ctx.fillStyle = "rgba(15, 15, 20, 0.82)";
+  ctx.fillStyle = "rgba(10, 10, 18, 0.88)";
   ctx.fill();
-
-  // Border glow
-  ctx.strokeStyle = "rgba(255,200,80,0.55)";
+  ctx.strokeStyle = "rgba(255, 200, 80, 0.6)";
   ctx.lineWidth = 3;
   ctx.stroke();
 
   // Name
   ctx.fillStyle = "#FFD86E";
-  ctx.font = "bold 44px 'Segoe UI', Arial, sans-serif";
+  ctx.font = "bold 46px 'Segoe UI', Arial, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(product.name, W / 2, 60);
+  ctx.fillText(product.name, W / 2, 58);
 
   // Price
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = "bold 38px 'Segoe UI', Arial, sans-serif";
-  ctx.fillText(product.price, W / 2, 110);
+  ctx.font = "bold 36px 'Segoe UI', Arial, sans-serif";
+  ctx.fillText(product.price, W / 2, 104);
 
-  // Dots (index)
-  const dotY = 148;
-  const dotR = 7;
-  const spacing = 22;
-  const totalDots = products.length;
-  const startX = W / 2 - ((totalDots - 1) * spacing) / 2;
+  // Index dots
+  const dotY = 142,
+    dotR = 7,
+    spacing = 24;
+  const startX = W / 2 - ((products.length - 1) * spacing) / 2;
   products.forEach((_, i) => {
     ctx.beginPath();
     ctx.arc(startX + i * spacing, dotY, dotR, 0, Math.PI * 2);
-    ctx.fillStyle = i === currentIndex ? "#FFD86E" : "rgba(255,255,255,0.35)";
+    ctx.fillStyle = i === currentIndex ? "#FFD86E" : "rgba(255,255,255,0.3)";
     ctx.fill();
   });
 
-  // Description
-  ctx.fillStyle = "rgba(255,255,255,0.75)";
-  ctx.font = "22px 'Segoe UI', Arial, sans-serif";
-  ctx.fillText(product.description, W / 2, 185);
+  // Description (word-wrap up to 2 lines)
+  ctx.fillStyle = "rgba(255,255,255,0.72)";
+  ctx.font = "21px 'Segoe UI', Arial, sans-serif";
+  const words = product.description.split(" ");
+  let line = "",
+    lines = [];
+  for (const w of words) {
+    const test = line ? line + " " + w : w;
+    if (ctx.measureText(test).width > W - 40 && line) {
+      lines.push(line);
+      line = w;
+    } else line = test;
+  }
+  lines.push(line);
+  lines.slice(0, 2).forEach((l, i) => ctx.fillText(l, W / 2, 178 + i * 28));
 
   return canvas;
 }
 
-// Sprite label node
 let labelSprite = null;
 
 function createOrUpdateLabel(product) {
   const canvas = makeTextCanvas(product);
   const tex = new THREE.CanvasTexture(canvas);
-  tex.needsUpdate = true;
 
   if (!labelSprite) {
-    const mat = new THREE.SpriteMaterial({
-      map: tex,
-      transparent: true,
-      depthTest: false,
-    });
-    labelSprite = new THREE.Sprite(mat);
+    labelSprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: tex,
+        transparent: true,
+        depthTest: false,
+      }),
+    );
     rootGroup.add(labelSprite);
   } else {
     labelSprite.material.map.dispose();
@@ -182,65 +209,61 @@ function createOrUpdateLabel(product) {
     labelSprite.material.needsUpdate = true;
   }
 
-  // Size in world units — canvas aspect 512/220
-  const aspect = 512 / 220;
-  const spriteH = 0.18;
-  labelSprite.scale.set(spriteH * aspect, spriteH, 1);
+  const aspect = 512 / 230;
+  const h = 0.2;
+  labelSprite.scale.set(h * aspect, h, 1);
 }
 
 function positionLabel() {
   if (!labelSprite || !currentModel) return;
-  // Get bounding box of model to sit label above it
   const box = new THREE.Box3().setFromObject(currentModel);
-  const topY = box.max.y;
-  labelSprite.position.set(0, topY + 0.14, 0);
+  labelSprite.position.set(0, box.max.y + 0.16, 0);
 }
 
 // =========================================
-// AR NAV ARROWS (3D Sprites in scene)
+// AR NAV ARROWS  (3-D sprites, raycasted)
 // =========================================
-function makeArrowCanvas(direction) {
-  const S = 128;
-  const canvas = document.createElement("canvas");
-  canvas.width = S;
-  canvas.height = S;
-  const ctx = canvas.getContext("2d");
+function makeArrowCanvas(dir) {
+  const S = 160;
+  const cvs = document.createElement("canvas");
+  cvs.width = cvs.height = S;
+  const ctx = cvs.getContext("2d");
 
   ctx.clearRect(0, 0, S, S);
   ctx.beginPath();
   ctx.arc(S / 2, S / 2, S / 2 - 4, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(20,20,20,0.75)";
+  ctx.fillStyle = "rgba(15,15,20,0.80)";
   ctx.fill();
-  ctx.strokeStyle = "rgba(255,200,80,0.7)";
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(255,200,80,0.75)";
+  ctx.lineWidth = 4;
   ctx.stroke();
 
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = "bold 64px Arial";
+  ctx.font = "bold 80px Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(
-    direction === "prev" ? "‹" : "›",
-    S / 2 + (direction === "prev" ? -2 : 2),
-    S / 2 + 2,
+    dir === "prev" ? "‹" : "›",
+    S / 2 + (dir === "prev" ? -3 : 3),
+    S / 2 + 3,
   );
-  return canvas;
+  return cvs;
 }
 
-let prevArrow = null;
-let nextArrow = null;
+let prevArrow = null,
+  nextArrow = null;
 
 function createARArrows() {
   ["prev", "next"].forEach((dir) => {
-    const canvas = makeArrowCanvas(dir);
-    const tex = new THREE.CanvasTexture(canvas);
-    const mat = new THREE.SpriteMaterial({
-      map: tex,
-      transparent: true,
-      depthTest: false,
-    });
-    const sprite = new THREE.Sprite(mat);
-    sprite.scale.set(0.09, 0.09, 1);
+    const tex = new THREE.CanvasTexture(makeArrowCanvas(dir));
+    const sprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: tex,
+        transparent: true,
+        depthTest: false,
+      }),
+    );
+    sprite.scale.set(0.1, 0.1, 1);
     sprite.userData.navDir = dir;
     rootGroup.add(sprite);
     if (dir === "prev") prevArrow = sprite;
@@ -251,9 +274,8 @@ function createARArrows() {
 function positionARArrows() {
   if (!prevArrow || !nextArrow || !currentModel) return;
   const box = new THREE.Box3().setFromObject(currentModel);
-  const topY = box.max.y;
-  const labelY = topY + 0.14;
-  const hw = (0.18 * 512) / 220 / 2 + 0.06; // half label width + gap
+  const labelY = box.max.y + 0.16;
+  const hw = (0.2 * 512) / 230 / 2 + 0.07;
   prevArrow.position.set(-hw, labelY, 0);
   nextArrow.position.set(hw, labelY, 0);
 }
@@ -261,7 +283,7 @@ function positionARArrows() {
 // =========================================
 // RETICLE
 // =========================================
-const reticleGeo = new THREE.RingGeometry(0.08, 0.105, 40);
+const reticleGeo = new THREE.RingGeometry(0.09, 0.115, 48);
 reticleGeo.rotateX(-Math.PI / 2);
 const reticle = new THREE.Mesh(
   reticleGeo,
@@ -287,10 +309,10 @@ document.body.appendChild(
 );
 
 // =========================================
-// HIT TEST STATE
+// HIT-TEST STATE
 // =========================================
 let hitTestSource = null;
-let hitTestSourceRequested = false;
+let hitTestSourceRequested = false; // FIX: guard so listener added only once per session
 let modelPlaced = false;
 
 // =========================================
@@ -304,31 +326,45 @@ const loader = new GLTFLoader();
 loader.setDRACOLoader(dracoLoader);
 
 let currentModel = null;
-let currentIndex = 0;
 let isLoading = false;
 let mixer = null;
 
 // =========================================
-// GESTURE: drag to rotate (1 finger / mouse)
+// LOADING INDICATOR HELPERS  (FIX: use CSS class, not innerHTML)
+// =========================================
+function showLoading() {
+  loadingEl?.classList.add("visible");
+}
+function hideLoading() {
+  loadingEl?.classList.remove("visible");
+}
+
+// =========================================
+// GESTURE: single-finger drag → rotate Y
 // =========================================
 let isDragging = false;
 let prevX = 0;
 let modelYaw = 0;
+// FIX: track whether a drag actually moved, so tap-to-place isn't consumed
+let dragMoved = false;
+const DRAG_THRESHOLD = 5; // px
 
 function onDragStart(x) {
   isDragging = true;
   prevX = x;
+  dragMoved = false;
 }
 function onDragMove(x) {
   if (!isDragging || !currentModel) return;
-  modelYaw += (x - prevX) * 0.012;
+  const dx = x - prevX;
+  if (Math.abs(dx) > DRAG_THRESHOLD) dragMoved = true;
+  modelYaw += dx * 0.012;
   prevX = x;
 }
 function onDragEnd() {
   isDragging = false;
 }
 
-// Mouse
 renderer.domElement.addEventListener("mousedown", (e) =>
   onDragStart(e.clientX),
 );
@@ -336,14 +372,19 @@ renderer.domElement.addEventListener("mousemove", (e) => onDragMove(e.clientX));
 renderer.domElement.addEventListener("mouseup", onDragEnd);
 renderer.domElement.addEventListener("mouseleave", onDragEnd);
 
-// Touch — single finger drag; ignore multi-touch
+// FIX: single touch-start listener that handles BOTH drag-start and swipe-start
+let touchStartX = 0;
 renderer.domElement.addEventListener(
   "touchstart",
   (e) => {
-    if (e.touches.length === 1) onDragStart(e.touches[0].clientX);
+    if (e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX;
+      onDragStart(e.touches[0].clientX);
+    }
   },
   { passive: true },
 );
+
 renderer.domElement.addEventListener(
   "touchmove",
   (e) => {
@@ -351,38 +392,53 @@ renderer.domElement.addEventListener(
   },
   { passive: true },
 );
-renderer.domElement.addEventListener("touchend", onDragEnd, { passive: true });
+
+renderer.domElement.addEventListener(
+  "touchend",
+  (e) => {
+    onDragEnd();
+
+    // Swipe navigation in non-AR only
+    if (!renderer.xr.isPresenting) {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      if (Math.abs(dx) > 55 && !dragMoved) navigate(dx < 0 ? 1 : -1);
+    }
+  },
+  { passive: true },
+);
 
 // =========================================
-// TAP TO PLACE (AR) + AR arrow tap detection
+// TAP TO PLACE  +  AR arrow raycasting
 // =========================================
+const _raycaster = new THREE.Raycaster();
+const _mouse = new THREE.Vector2();
+
 renderer.domElement.addEventListener("click", (e) => {
   if (!renderer.xr.isPresenting) return;
+  // Ignore if the touch was actually a drag
+  if (dragMoved) return;
 
-  // Check if tapped an AR arrow sprite
-  if (prevArrow && nextArrow) {
-    const mouse = new THREE.Vector2(
-      (e.clientX / window.innerWidth) * 2 - 1,
-      -(e.clientY / window.innerHeight) * 2 + 1,
-    );
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mouse, camera);
-    const hits = raycaster.intersectObjects([prevArrow, nextArrow]);
-    if (hits.length > 0) {
-      const dir = hits[0].object.userData.navDir;
-      navigate(dir === "next" ? 1 : -1);
-      return;
-    }
+  // Check AR arrow sprites first
+  _mouse.set(
+    (e.clientX / window.innerWidth) * 2 - 1,
+    (e.clientY / window.innerHeight) * -2 + 1,
+  );
+  _raycaster.setFromCamera(_mouse, camera);
+  const hits = _raycaster.intersectObjects(
+    [prevArrow, nextArrow].filter(Boolean),
+  );
+  if (hits.length > 0) {
+    navigate(hits[0].object.userData.navDir === "next" ? 1 : -1);
+    return;
   }
 
-  // Place model
+  // Place model on reticle
   if (!modelPlaced && reticle.visible) {
     rootGroup.position.setFromMatrixPosition(reticle.matrix);
     rootGroup.visible = true;
     reticle.visible = false;
     modelPlaced = true;
-    document.getElementById("ar-hint")?.style &&
-      (document.getElementById("ar-hint").style.display = "none");
+    if (arHint) arHint.style.display = "none";
   }
 });
 
@@ -395,14 +451,15 @@ function fitModel(model, isAR) {
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
 
-  const target = isAR ? 0.22 : 0.38;
+  // FIX: AR target size bumped to 0.30 so model is clearly visible
+  const target = isAR ? 0.3 : 0.38;
   const scale = target / maxDim;
   model.scale.setScalar(scale);
 
-  // Re-compute after scale
+  // Recompute after scale so we get the correct min.y
   const box2 = new THREE.Box3().setFromObject(model);
   model.position.x = -center.x * scale;
-  model.position.y = -box2.min.y; // sit on floor / pivot base
+  model.position.y = -box2.min.y; // sit flush on AR floor / pivot
   model.position.z = isAR ? 0 : -1.1;
 }
 
@@ -412,8 +469,7 @@ function fitModel(model, isAR) {
 function fixMaterials(model) {
   model.traverse((node) => {
     if (!node.isMesh) return;
-    node.castShadow = true;
-    node.receiveShadow = true;
+    node.castShadow = node.receiveShadow = true;
     const mat = node.material;
     if (!mat) return;
     if (mat.map) mat.map.colorSpace = THREE.SRGBColorSpace;
@@ -423,10 +479,47 @@ function fixMaterials(model) {
 }
 
 // =========================================
+// CLEAR CURRENT MODEL
+// =========================================
+function clearModel() {
+  if (!currentModel) return;
+  rootGroup.remove(currentModel);
+  currentModel.traverse((node) => {
+    if (!node.isMesh) return;
+    node.geometry?.dispose();
+    (Array.isArray(node.material) ? node.material : [node.material]).forEach(
+      (m) => m?.dispose(),
+    );
+  });
+  currentModel = null;
+  if (mixer) {
+    mixer.stopAllAction();
+    mixer = null;
+  }
+}
+
+// =========================================
+// UPDATE 2-D UI
+// =========================================
+function updateUI(index) {
+  const p = products[index];
+  if (nameEl) nameEl.textContent = p.name;
+  if (priceEl) priceEl.textContent = p.price;
+  if (descEl) descEl.textContent = p.description;
+  if (orderBtn) {
+    orderBtn.textContent = `🛒 Order ${p.name}`;
+    orderBtn.onclick = () => window.open(p.orderLink, "_blank");
+  }
+  if (dotsEl) {
+    [...dotsEl.children].forEach((d, i) => {
+      d.className = "dot" + (i === index ? " active" : "");
+    });
+  }
+}
+
+// =========================================
 // LOAD PRODUCT
 // =========================================
-const loadingEl = document.getElementById("loadingIndicator");
-
 function loadProduct(index) {
   if (isLoading) return;
   isLoading = true;
@@ -434,102 +527,60 @@ function loadProduct(index) {
   const isAR = renderer.xr.isPresenting;
   const product = products[index];
 
-  // Update 2D UI (non-AR)
-  const nameEl = document.getElementById("name");
-  const priceEl = document.getElementById("price");
-  const descEl = document.getElementById("description");
-  const orderBtn = document.getElementById("orderBtn");
-  const dotsEl = document.getElementById("indexDots");
-  if (nameEl) nameEl.textContent = product.name;
-  if (priceEl) priceEl.textContent = product.price;
-  if (descEl) descEl.textContent = product.description;
-  if (orderBtn) {
-    orderBtn.textContent = `🛒 Order ${product.name}`;
-    orderBtn.onclick = () => window.open(product.orderLink, "_blank");
-  }
-  if (dotsEl) {
-    [...dotsEl.children].forEach((d, i) => {
-      d.className = "dot" + (i === index ? " active" : "");
-    });
-  }
-
-  if (loadingEl) {
-    loadingEl.textContent = "Loading...";
-    loadingEl.style.display = "block";
-  }
-
-  // Clear old model
-  if (currentModel) {
-    rootGroup.remove(currentModel);
-    currentModel.traverse((node) => {
-      if (node.isMesh) {
-        node.geometry?.dispose();
-        (Array.isArray(node.material)
-          ? node.material
-          : [node.material]
-        ).forEach((m) => m?.dispose());
-      }
-    });
-    currentModel = null;
-  }
-  if (mixer) {
-    mixer.stopAllAction();
-    mixer = null;
-  }
+  updateUI(index);
+  showLoading();
+  clearModel();
   modelYaw = 0;
+
+  const onLoaded = (model) => {
+    currentModel = model;
+    fixMaterials(currentModel);
+    fitModel(currentModel, isAR);
+    rootGroup.add(currentModel);
+
+    createOrUpdateLabel(product);
+    positionLabel();
+    positionARArrows();
+
+    hideLoading();
+    isLoading = false;
+  };
 
   loader.load(
     product.model,
-    (gltf) => {
-      currentModel = gltf.scene;
-      fixMaterials(currentModel);
-      fitModel(currentModel, isAR);
 
+    (gltf) => {
       if (gltf.animations?.length) {
-        mixer = new THREE.AnimationMixer(currentModel);
+        mixer = new THREE.AnimationMixer(gltf.scene);
         gltf.animations.forEach((c) => mixer.clipAction(c).play());
       }
-
-      rootGroup.add(currentModel);
-
-      // Update 3D floating label
-      createOrUpdateLabel(product);
-      positionLabel();
-      positionARArrows();
-
-      if (loadingEl) loadingEl.style.display = "none";
-      isLoading = false;
+      onLoaded(gltf.scene);
     },
+
     (xhr) => {
-      if (xhr.lengthComputable && loadingEl)
-        loadingEl.textContent = `Loading... ${Math.round((xhr.loaded / xhr.total) * 100)}%`;
+      // progress — label is inside the animated dots, no textContent needed
     },
+
     () => {
-      // Fallback geometry
+      // Fallback pizza geometry when .glb is missing
       const g = new THREE.Group();
-      g.add(
-        Object.assign(
-          new THREE.Mesh(
-            new THREE.CylinderGeometry(0.18, 0.18, 0.03, 32),
-            new THREE.MeshStandardMaterial({ color: 0xe8b84b, roughness: 0.7 }),
-          ),
-          { castShadow: true },
-        ),
+
+      const base = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.18, 0.18, 0.03, 40),
+        new THREE.MeshStandardMaterial({ color: 0xe8b84b, roughness: 0.6 }),
       );
+      base.castShadow = base.receiveShadow = true;
+      g.add(base);
+
       const crust = new THREE.Mesh(
-        new THREE.TorusGeometry(0.18, 0.025, 8, 32),
+        new THREE.TorusGeometry(0.18, 0.026, 10, 40),
         new THREE.MeshStandardMaterial({ color: 0xc47c2b, roughness: 0.9 }),
       );
       crust.rotation.x = Math.PI / 2;
+      crust.castShadow = true;
       g.add(crust);
-      currentModel = g;
-      fitModel(currentModel, isAR);
-      rootGroup.add(currentModel);
-      createOrUpdateLabel(product);
-      positionLabel();
-      positionARArrows();
-      if (loadingEl) loadingEl.style.display = "none";
-      isLoading = false;
+
+      onLoaded(g);
     },
   );
 }
@@ -549,61 +600,41 @@ document
   .getElementById("prevBtn")
   ?.addEventListener("click", () => navigate(-1));
 
-// Swipe detection on canvas (for non-AR)
-let swipeStartX = 0;
-renderer.domElement.addEventListener(
-  "touchstart",
-  (e) => {
-    swipeStartX = e.touches[0].clientX;
-  },
-  { passive: true },
-);
-renderer.domElement.addEventListener(
-  "touchend",
-  (e) => {
-    if (renderer.xr.isPresenting) return;
-    const dx = e.changedTouches[0].clientX - swipeStartX;
-    if (Math.abs(dx) > 50) navigate(dx < 0 ? 1 : -1);
-  },
-  { passive: true },
-);
-
 // =========================================
-// XR EVENTS
+// XR SESSION EVENTS
 // =========================================
 renderer.xr.addEventListener("sessionstart", () => {
+  // FIX: reset ALL hit-test state fresh for this session
+  hitTestSource = null;
+  hitTestSourceRequested = false;
   modelPlaced = false;
-  rootGroup.visible = false;
+
+  rootGroup.visible = false; // hide until user places on surface
   reticle.visible = true;
-  document.getElementById("ar-hint") &&
-    (document.getElementById("ar-hint").style.display = "flex");
-  document.getElementById("bottom-panel") &&
-    (document.getElementById("bottom-panel").style.display = "none");
-  // Reload so model fits AR scale
-  if (currentModel) {
-    rootGroup.remove(currentModel);
-    currentModel = null;
-  }
-  loadProduct(currentIndex);
+
+  if (arHint) arHint.style.display = "flex";
+  if (bottomPanel) bottomPanel.style.display = "none";
+
+  clearModel();
+  loadProduct(currentIndex); // reload at AR scale (isAR = true now)
 });
 
 renderer.xr.addEventListener("sessionend", () => {
-  modelPlaced = false;
+  // FIX: clean up hit-test state (listener on session already fired 'end')
   hitTestSource = null;
   hitTestSourceRequested = false;
+  modelPlaced = false;
+
   reticle.visible = false;
   rootGroup.position.set(0, 0, 0);
   rootGroup.rotation.set(0, 0, 0);
   rootGroup.visible = true;
-  document.getElementById("ar-hint") &&
-    (document.getElementById("ar-hint").style.display = "none");
-  document.getElementById("bottom-panel") &&
-    (document.getElementById("bottom-panel").style.display = "flex");
-  if (currentModel) {
-    rootGroup.remove(currentModel);
-    currentModel = null;
-  }
-  loadProduct(currentIndex);
+
+  if (arHint) arHint.style.display = "none";
+  if (bottomPanel) bottomPanel.style.display = "flex";
+
+  clearModel();
+  loadProduct(currentIndex); // reload at normal scale
 });
 
 // =========================================
@@ -615,32 +646,36 @@ renderer.setAnimationLoop((_, frame) => {
   const delta = clock.getDelta();
   if (mixer) mixer.update(delta);
 
-  // Apply drag rotation
-  if (currentModel) {
-    rootGroup.rotation.y = modelYaw;
-  }
+  // User rotation
+  if (currentModel) rootGroup.rotation.y = modelYaw;
 
   // Label always faces camera
-  if (labelSprite) {
-    labelSprite.quaternion.copy(camera.quaternion);
-  }
+  if (labelSprite) labelSprite.quaternion.copy(camera.quaternion);
 
-  // HIT TEST
+  // ── HIT TEST ──────────────────────────────────────────────
   if (frame && renderer.xr.isPresenting && !modelPlaced) {
     const session = renderer.xr.getSession();
     const refSpace = renderer.xr.getReferenceSpace();
 
+    // FIX: request hitTestSource only ONCE per session, not every frame
     if (!hitTestSourceRequested) {
-      session.requestReferenceSpace("viewer").then((vs) => {
-        session.requestHitTestSource({ space: vs }).then((src) => {
+      hitTestSourceRequested = true; // guard immediately
+
+      session.requestReferenceSpace("viewer").then((viewerSpace) => {
+        session.requestHitTestSource({ space: viewerSpace }).then((src) => {
           hitTestSource = src;
         });
       });
-      session.addEventListener("end", () => {
-        hitTestSourceRequested = false;
-        hitTestSource = null;
-      });
-      hitTestSourceRequested = true;
+
+      // FIX: clean up when session ends (added once, not every frame)
+      session.addEventListener(
+        "end",
+        () => {
+          hitTestSource = null;
+          hitTestSourceRequested = false;
+        },
+        { once: true },
+      );
     }
 
     if (hitTestSource) {
@@ -653,6 +688,7 @@ renderer.setAnimationLoop((_, frame) => {
       }
     }
   }
+  // ──────────────────────────────────────────────────────────
 
   renderer.render(scene, camera);
 });
@@ -670,8 +706,6 @@ window.addEventListener("resize", () => {
 // =========================================
 // INIT
 // =========================================
-// Build dots
-const dotsEl = document.getElementById("indexDots");
 if (dotsEl) {
   products.forEach((_, i) => {
     const d = document.createElement("div");
@@ -679,6 +713,6 @@ if (dotsEl) {
     dotsEl.appendChild(d);
   });
 }
+
 createARArrows();
-rootGroup.visible = true;
 loadProduct(0);
