@@ -9,7 +9,7 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 // =========================================
 const products = [
   {
-    name: "Pepperoni Pizza",
+    name: "Pepperoni Pizza3",
     price: "$14",
     description: "Pepperoni, mozzarella cheese, olives and mushroom.",
     model: "./models/pizza.glb",
@@ -95,16 +95,14 @@ keyLight.shadow.mapSize.height = 2048;
 keyLight.shadow.bias = -0.001;
 scene.add(keyLight);
 
-scene.add(
-  Object.assign(new THREE.DirectionalLight(0xc8e0ff, 0.8), {
-    position: new THREE.Vector3(-4, 2, -3),
-  }),
-);
-scene.add(
-  Object.assign(new THREE.DirectionalLight(0xffd699, 1.2), {
-    position: new THREE.Vector3(0, 3, -5),
-  }),
-);
+// بعد (درست)
+const fillLight = new THREE.DirectionalLight(0xc8e0ff, 0.8);
+fillLight.position.set(-4, 2, -3);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xffd699, 1.2);
+rimLight.position.set(0, 3, -5);
+scene.add(rimLight);
 
 // =========================================
 // ROOT GROUP  (model + 3-D label move together)
