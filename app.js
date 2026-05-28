@@ -209,7 +209,7 @@ function createOrUpdateLabel(product) {
 function positionLabel() {
   if (!labelSprite || !currentModel) return;
   const box = new THREE.Box3().setFromObject(currentModel);
-  labelSprite.position.set(0, box.max.y + 0.4, 0);
+  labelSprite.position.set(0, box.max.y + 1, 0);
 }
 
 // =========================================
@@ -264,7 +264,7 @@ function createARArrows() {
 function positionARArrows() {
   if (!prevArrow || !nextArrow || !currentModel) return;
   const box = new THREE.Box3().setFromObject(currentModel);
-  const labelY = box.max.y + 0.4;
+  const labelY = box.max.y + 1;
   const hw = (0.2 * 512) / 230 / 2 + 0.07;
   prevArrow.position.set(-hw, labelY, 0);
   nextArrow.position.set(hw, labelY, 0);
