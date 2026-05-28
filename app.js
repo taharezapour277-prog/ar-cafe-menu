@@ -13,6 +13,8 @@ let filteredProducts = [];
 let currentCategory = "pizza";
 let currentIndex = 0;
 
+const modelCache = {};
+const percentEl = document.getElementById("loading-percent");
 // =========================================
 // UI DOM REFERENCES
 // =========================================
@@ -454,31 +456,21 @@ function loadProduct(index) {
   orderBtn.querySelector("span").textContent = `سفارش ${product.name}`;
   orderBtn.onclick = () => window.open(product.orderLink, "_blank");
 
-  // Set active status styling inside list nodes elements dynamically
   document.querySelectorAll(".drawer-product-item").forEach((itemEl) => {
     const pId = parseInt(itemEl.getAttribute("data-prod-id"));
     itemEl.classList.toggle("active", pId === product.id);
   });
 
-  // Synchronize slider dots active state indicators
   document.querySelectorAll("#indexDots .dot").forEach((d, i) => {
     d.className = "dot" + (i === index ? " active" : "");
   });
 
   loadingEl.classList.add("visible");
+  if (percentEl) percentEl.textContent = toPersianNumber(0) + "%";
 
-  // Memory cleanup for old instances references
+  // پاکسازی صحنه از مدل قبلی (اما بدون Dispose کردن برای حفظ در کش)
   if (currentModel) {
     rootGroup.remove(currentModel);
-    currentModel.traverse((node) => {
-      if (node.isMesh) {
-        node.geometry?.dispose();
-        (Array.isArray(node.material)
-          ? node.material
-          : [node.material]
-        ).forEach((m) => m?.dispose());
-      }
-    });
     currentModel = null;
     if (mixer) {
       mixer.stopAllAction();
@@ -506,7 +498,6 @@ function loadProduct(index) {
     rootGroup.add(currentModel);
 
     if (isAR) {
-      // در حالت AR هم چرخش را موقتاً خنثی می‌کنیم
       const prevYaw = rootGroup.rotation.y;
       rootGroup.rotation.y = 0;
       currentModel.position.set(0, 0, 0);
@@ -525,7 +516,6 @@ function loadProduct(index) {
 
       rootGroup.rotation.y = prevYaw;
     } else {
-      // محاسبه کاملاً هوشمند ابعاد برای نمای دسکتاپ/موبایل
       updateModelLayout();
     }
 
@@ -539,38 +529,81 @@ function loadProduct(index) {
     if (isAR && reticle.visible && !modelPlaced) placeModelAtReticle();
   };
 
-  // Execution Loader Block
-  loader.load(
-    product.model,
-    (gltf) => {
-      if (gltf.animations?.length) {
-        mixer = new THREE.AnimationMixer(gltf.scene);
-        gltf.animations.forEach((anim) => mixer.clipAction(anim).play());
-      }
-      onModelSetupReady(gltf.scene);
-    },
-    undefined,
-    () => {
-      // Robust elegant visual placeholder fallback geometry primitive mesh
-      const fallbackGroup = new THREE.Group();
-      const plate = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.2, 0.22, 0.03, 32),
-        new THREE.MeshStandardMaterial({ color: 0x2d2d2d, roughness: 0.4 })
-      );
-      plate.castShadow = plate.receiveShadow = true;
-      fallbackGroup.add(plate);
+  // --- سیستم کشینگ و لودینگ مدل ---
 
-      const foodMock = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.18, 0.18, 0.05, 32),
-        new THREE.MeshStandardMaterial({ color: 0xfebf05, roughness: 0.8 })
-      );
-      foodMock.position.y = 0.04;
-      foodMock.castShadow = true;
-      fallbackGroup.add(foodMock);
+  if (modelCache[product.id]) {
+    // 1. اگر مدل قبلاً لود شده، مستقیماً از کش بخوان (بدون نیاز به اینترنت)
+    const cachedData = modelCache[product.id];
 
-      onModelSetupReady(fallbackGroup);
+    if (cachedData.mixer) {
+      mixer = cachedData.mixer;
+      mixer.setTime(0); // ریست کردن انیمیشن به فریم اول
+      cachedData.actions.forEach((a) => a.play());
     }
-  );
+
+    // اجرای سریع تابع چیدمان مدل
+    onModelSetupReady(cachedData.scene);
+  } else {
+    // 2. اگر مدل در کش نیست، آن را دانلود کن
+    loader.load(
+      product.model,
+      (gltf) => {
+        // onLoad (وقتی لود تمام شد)
+        let newMixer = null;
+        let actions = [];
+
+        if (gltf.animations?.length) {
+          newMixer = new THREE.AnimationMixer(gltf.scene);
+          gltf.animations.forEach((anim) => {
+            actions.push(newMixer.clipAction(anim).play());
+          });
+          mixer = newMixer;
+        }
+
+        // ذخیره مدل و انیمیشن‌های آن در کش برای دفعات بعد
+        modelCache[product.id] = {
+          scene: gltf.scene,
+          mixer: newMixer,
+          actions: actions,
+        };
+
+        onModelSetupReady(gltf.scene);
+      },
+      (xhr) => {
+        // onProgress (محاسبه درصد لود)
+        if (xhr.lengthComputable) {
+          const percentComplete = Math.round((xhr.loaded / xhr.total) * 100);
+          if (percentEl)
+            percentEl.textContent = toPersianNumber(percentComplete) + "%";
+        } else {
+          // در صورتی که سرور حجم کل را نفرستد (محاسبه مگابایت دانلود شده)
+          const mbLoaded = (xhr.loaded / (1024 * 1024)).toFixed(1);
+          if (percentEl)
+            percentEl.textContent = toPersianNumber(mbLoaded) + " مگابایت";
+        }
+      },
+      () => {
+        // onError (در صورت بروز خطا)
+        const fallbackGroup = new THREE.Group();
+        const plate = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.2, 0.22, 0.03, 32),
+          new THREE.MeshStandardMaterial({ color: 0x2d2d2d, roughness: 0.4 })
+        );
+        plate.castShadow = plate.receiveShadow = true;
+        fallbackGroup.add(plate);
+
+        const foodMock = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.18, 0.18, 0.05, 32),
+          new THREE.MeshStandardMaterial({ color: 0xfebf05, roughness: 0.8 })
+        );
+        foodMock.position.y = 0.04;
+        foodMock.castShadow = true;
+        fallbackGroup.add(foodMock);
+
+        onModelSetupReady(fallbackGroup);
+      }
+    );
+  }
 }
 
 function buildDotsIndicator() {
