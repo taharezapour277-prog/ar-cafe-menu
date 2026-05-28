@@ -52,21 +52,23 @@ const arNextBtn = document.getElementById("ar-nextBtn");
 
 let lastNavTime = 0;
 function safeNavigate(dir) {
-  const now = Date.now();Your
-  if (now - lastNavTime < 300) return; 
+  const now = Date.now();
+  if (now - lastNavTime < 300) return; // جلوگیری از دبل‌کلیک ناخواسته در AR
   lastNavTime = now;
   navigate(dir);
 }
 
+// رویداد beforexrselect حیاتی‌ترین بخش برای کارکرد دکمه‌ها روی لایه AR است
 arPrevBtn?.addEventListener("beforexrselect", (e) => {
-  e.preventDefault(); 
+  e.preventDefault(); // جلوگیری از شلیک شدن select در WebXR (مانع ریست شدن مکان مدل می‌شود)
   safeNavigate(-1);
 });
 arNextBtn?.addEventListener("beforexrselect", (e) => {
-  e.preventDefault(); 
+  e.preventDefault(); // جلوگیری از شلیک شدن select در WebXR
   safeNavigate(1);
 });
 
+// بک‌آپ برای اطمینان از کارکرد در شبیه‌سازها و تاچ‌های استاندارد
 arPrevBtn?.addEventListener("click", (e) => {
   e.stopPropagation();
   safeNavigate(-1);
@@ -112,9 +114,9 @@ function resetSceneLayout() {
   const isMobile = window.innerWidth < 768;
   if (isMobile) {
     // تنظیمات اختصاصی موبایل: دوربین بالاتر می‌رود و به زاویه بالاتری نگاه می‌کند تا محصول بالای کارت بیفتد
-    camera.position.set(0, 0.72, 0.75);
+    camera.position.set(0, 0.9, 0.75);
     camera.lookAt(0, 0.12, 0);
-    rootGroup.position.set(0, 0.4, 0); // مدل یک مقدار مشخص به سمت بالا شیفت پیدا می‌کند
+    rootGroup.position.set(0, 0.45, 0); // مدل یک مقدار مشخص به سمت بالا شیفت پیدا می‌کند
   } else {
     // تنظیمات استاندارد دسکتاپ
     camera.position.set(0, 0.3, 0.8);
