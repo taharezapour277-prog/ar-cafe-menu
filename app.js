@@ -116,7 +116,7 @@ function resetSceneLayout() {
     // تنظیمات اختصاصی موبایل: دوربین بالاتر می‌رود و به زاویه بالاتری نگاه می‌کند تا محصول بالای کارت بیفتد
     camera.position.set(0, 0.9, 0.75);
     camera.lookAt(0, 0.12, 0);
-    rootGroup.position.set(0, 0.45, 0); // مدل یک مقدار مشخص به سمت بالا شیفت پیدا می‌کند
+    rootGroup.position.set(0, 0.6, 0.15); // مدل یک مقدار مشخص به سمت بالا شیفت پیدا می‌کند
   } else {
     // تنظیمات استاندارد دسکتاپ
     camera.position.set(0, 0.3, 0.8);
@@ -265,7 +265,7 @@ function positionLabel() {
   const localMaxY = box.max.y - rootGroup.position.y;
   
   // تنظیم پوزیشن دقیق لیبل بدون توجه به اینکه مدل در کجای اتاق قرار دارد
-  labelSprite.position.set(0, localMaxY + 0.15, 0);
+  labelSprite.position.set(0, localMaxY + 0.4, 0);
 }
 
 function setARNav(visible) {
