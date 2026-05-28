@@ -42,7 +42,7 @@ const dotsEl = document.getElementById("indexDots");
 const loadingEl = document.getElementById("loadingIndicator");
 const bottomPanel = document.getElementById("bottom-panel");
 const arHint = document.getElementById("ar-hint");
-const arNav = document.getElementById("ar-nav"); // ← اضافه شده برای منوی ناوبری AR
+const arNav = document.getElementById("ar-nav");
 
 // =========================================
 // AR NAV BUTTONS LISTENERS (FIXED FOR WEBXR)
@@ -53,22 +53,20 @@ const arNextBtn = document.getElementById("ar-nextBtn");
 let lastNavTime = 0;
 function safeNavigate(dir) {
   const now = Date.now();
-  if (now - lastNavTime < 300) return; // جلوگیری از دبل‌کلیک ناخواسته در AR
+  if (now - lastNavTime < 300) return; 
   lastNavTime = now;
   navigate(dir);
 }
 
-// رویداد beforexrselect حیاتی‌ترین بخش برای کارکرد دکمه‌ها روی لایه AR است
 arPrevBtn?.addEventListener("beforexrselect", (e) => {
-  e.preventDefault(); // جلوگیری از شلیک شدن select در WebXR (مانع ریست شدن مکان مدل می‌شود)
+  e.preventDefault(); 
   safeNavigate(-1);
 });
 arNextBtn?.addEventListener("beforexrselect", (e) => {
-  e.preventDefault(); // جلوگیری از شلیک شدن select در WebXR
+  e.preventDefault(); 
   safeNavigate(1);
 });
 
-// بک‌آپ برای اطمینان از کارکرد در شبیه‌سازها و تاچ‌های استاندارد
 arPrevBtn?.addEventListener("click", (e) => {
   e.stopPropagation();
   safeNavigate(-1);
@@ -77,6 +75,7 @@ arNextBtn?.addEventListener("click", (e) => {
   e.stopPropagation();
   safeNavigate(1);
 });
+
 // =========================================
 // RENDERER
 // =========================================
@@ -105,8 +104,25 @@ const camera = new THREE.PerspectiveCamera(
   0.01,
   20,
 );
-camera.position.set(0, 0.3, 0.8);
-camera.lookAt(0, 0, 0);
+
+// ── تابع جدید و هوشمند برای تنظیم پوزیشن بی نقص محصول در دسکتاپ و موبایل ──
+function resetSceneLayout() {
+  if (renderer.xr.isPresenting) return; // در فضای AR تنظیمات دستکاری نشود
+
+  const isMobile = window.innerWidth < 768;
+  if (isMobile) {
+    // تنظیمات اختصاصی موبایل: دوربین بالاتر می‌رود و به زاویه بالاتری نگاه می‌کند تا محصول بالای کارت بیفتد
+    camera.position.set(0, 0.42, 0.75);
+    camera.lookAt(0, 0.12, 0);
+    rootGroup.position.set(0, 0.08, 0); // مدل یک مقدار مشخص به سمت بالا شیفت پیدا می‌کند
+  } else {
+    // تنظیمات استاندارد دسکتاپ
+    camera.position.set(0, 0.3, 0.8);
+    camera.lookAt(0, 0, 0);
+    rootGroup.position.set(0, 0, 0);
+  }
+  camera.updateProjectionMatrix();
+}
 
 // =========================================
 // ENVIRONMENT
@@ -145,7 +161,6 @@ scene.add(rimLight);
 const rootGroup = new THREE.Group();
 rootGroup.matrixAutoUpdate = true;
 scene.add(rootGroup);
-rootGroup.visible = true;
 
 // =========================================
 // 3-D FLOATING LABEL
@@ -179,12 +194,12 @@ function makeTextCanvas(product) {
   ctx.stroke();
 
   ctx.fillStyle = "#FFD86E";
-  ctx.font = "bold 46px 'Segoe UI', Arial, sans-serif";
+  ctx.font = "bold 46px 'Vazirmatn', 'Segoe UI', Arial, sans-serif";
   ctx.textAlign = "center";
   ctx.fillText(product.name, W / 2, 58);
 
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = "bold 36px 'Segoe UI', Arial, sans-serif";
+  ctx.font = "bold 36px 'Vazirmatn', 'Segoe UI', Arial, sans-serif";
   ctx.fillText(product.price, W / 2, 104);
 
   const dotY = 142, dotR = 7, spacing = 24;
@@ -197,7 +212,7 @@ function makeTextCanvas(product) {
   });
 
   ctx.fillStyle = "rgba(255,255,255,0.72)";
-  ctx.font = "21px 'Segoe UI', Arial, sans-serif";
+  ctx.font = "21px 'Vazirmatn', 'Segoe UI', Arial, sans-serif";
   const words = product.description.split(" ");
   let line = "", lines = [];
   for (const w of words) {
@@ -237,21 +252,26 @@ function createOrUpdateLabel(product) {
   labelSprite.scale.set(h * aspect, h, 1);
 }
 
+// ── رفع باگ خراب شدن لیبل در AR (تبدیل پوزیشن جهانی به محلی) ──
 function positionLabel() {
   if (!labelSprite || !currentModel) return;
+  
+  currentModel.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(currentModel);
-  // طبق درخواست شما، افست را به 0.38 افزایش دادیم تا توضیحات بالاتر برود
-  labelSprite.position.set(0, box.max.y + 0.38, 0);
+  
+  // کسر کردن پوزیشن جهانی rootGroup برای به دست آوردن ارتفاع خالص محلی مدل روی زمین AR
+  const localMaxY = box.max.y - rootGroup.position.y;
+  
+  // تنظیم پوزیشن دقیق لیبل بدون توجه به اینکه مدل در کجای اتاق قرار دارد
+  labelSprite.position.set(0, localMaxY + 0.15, 0);
 }
 
-// ── تابع کمکی جدید برای تغییر وضعیت هندلینگ دکمه‌های HTML در AR ──
 function setARNav(visible) {
   if (!arNav) return;
   arNav.classList.toggle("visible", visible);
 }
 
 function update3DUIVisibility(isAR) {
-  // از آنجا که دکمه‌های HTML ناوبری اضافه شدند، فلش‌های سه‌بعدی را کلاً از فضای سه بعدی حذف یا مخفی کردیم
   if (labelSprite) labelSprite.visible = isAR;
 }
 
@@ -403,8 +423,6 @@ function placeModel() {
 // =========================================
 function onARSelect(e) {
   if (dragMoved) return;
-
-  // جلوگیری از کلیک ناخواسته روی صفحه هنگام زدن دکمه‌های ناوبری HTML
   if (e.inputSource.targetRayMode === "tracked-pointer") return;
 
   if (modelPlaced) {
@@ -592,7 +610,7 @@ renderer.xr.addEventListener("sessionstart", () => {
   }
   if (bottomPanel) bottomPanel.style.display = "none";
 
-  setARNav(true); // نمایش دکمه‌های ناوبری AR
+  setARNav(true); 
   update3DUIVisibility(true);
 
   clearModel();
@@ -602,29 +620,35 @@ renderer.xr.addEventListener("sessionstart", () => {
   session.addEventListener("select", onARSelect);
 });
 
+// ── رفع کامل باگ بهم ریختگی صفحه بعد از خروج از AR ──
 renderer.xr.addEventListener("sessionend", () => {
   hitTestSource = null;
   hitTestSourceRequested = false;
   modelPlaced = false;
   modelYaw = 0;
 
-  // ── فیکس باگ ۱: ریست کامل دوربین پس از خروج از AR ──
-  camera.position.set(0, 0.3, 0.8);
-  camera.lookAt(0, 0, 0);
-  camera.updateProjectionMatrix();
+  // ۱. فورس ریست ابعاد رندرر به اندازه اصلی مرورگر (بسیار حیاتی)
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  // ۲. بازنشانی مجدد لی‌اوت دوربین و مدل متناسب با دستگاه فعلی
+  resetSceneLayout();
 
   reticle.visible = false;
-  rootGroup.position.set(0, 0, 0);
   rootGroup.quaternion.identity();
-  rootGroup.scale.set(1, 1, 1);
   rootGroup.visible = true;
 
   if (arHint) arHint.style.display = "none";
-  if (bottomPanel) bottomPanel.style.display = "flex";
+  
+  // ۳. نمایش مجدد و اصولی کامپوننت‌های صفحه اول
+  if (bottomPanel) {
+    bottomPanel.style.display = "flex";
+  }
 
-  setARNav(false); // مخفی کردن دکمه‌های ناوبری AR
+  setARNav(false); 
   update3DUIVisibility(false);
 
+  // ۴. لود مجدد مدل دسکتاپ/موبایل با مقیاس صحیح
   clearModel();
   loadProduct(currentIndex);
 });
@@ -700,6 +724,7 @@ window.addEventListener("resize", () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  resetSceneLayout(); // آپدیت چیدمان با تغییر سایز مانیتور یا چرخش گوشی
 });
 
 // =========================================
@@ -713,5 +738,7 @@ if (dotsEl) {
   });
 }
 
+rootGroup.visible = true;
+resetSceneLayout(); // اجرای چیدمان بهینه در لود اولیه
 update3DUIVisibility(false);
 loadProduct(0);
