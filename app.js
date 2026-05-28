@@ -52,7 +52,7 @@ const arNextBtn = document.getElementById("ar-nextBtn");
 
 let lastNavTime = 0;
 function safeNavigate(dir) {
-  const now = Date.now();
+  const now = Date.now();Your
   if (now - lastNavTime < 300) return; 
   lastNavTime = now;
   navigate(dir);
@@ -114,7 +114,7 @@ function resetSceneLayout() {
     // تنظیمات اختصاصی موبایل: دوربین بالاتر می‌رود و به زاویه بالاتری نگاه می‌کند تا محصول بالای کارت بیفتد
     camera.position.set(0, 0.42, 0.75);
     camera.lookAt(0, 0.12, 0);
-    rootGroup.position.set(0, 0.08, 0); // مدل یک مقدار مشخص به سمت بالا شیفت پیدا می‌کند
+    rootGroup.position.set(0, 0.2, 0); // مدل یک مقدار مشخص به سمت بالا شیفت پیدا می‌کند
   } else {
     // تنظیمات استاندارد دسکتاپ
     camera.position.set(0, 0.3, 0.8);
