@@ -22,7 +22,7 @@ body {
   position: relative;
   width: 100%;
   max-width: 420px;
-  height: 100vh;
+  height: 100dvh; /* FIX 1: تغییر از 100vh به 100dvh — نوار Chrome دیگر دکمه را نمی‌برد */
   min-height: 100dvh;
   background-color: #212121;
   display: flex;
@@ -159,7 +159,8 @@ body {
   width: 100%;
   z-index: 5;
   pointer-events: none;
-  padding-bottom: 90px; /* Space for fixed action bottom bar */
+  /* FIX 3: فضای کافی برای bottom-action-bar + safe area گوشی‌های ناچ‌دار */
+  padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
 }
 
 #bottom-panel {
@@ -251,13 +252,17 @@ body {
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 80px;
+  /* FIX 2a: ارتفاع پایه ۸۰px + safe-area برای گوشی‌های Home Indicator دار */
+  height: calc(80px + env(safe-area-inset-bottom, 0px));
   background: #1a1a1a;
   padding: 14px 20px;
+  /* FIX 2b: پدینگ پایین با safe-area تنظیم می‌شود تا دکمه همیشه دیده شود */
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   z-index: 6;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
-  align-items: center;
+  /* FIX 2c: از flex-start استفاده می‌کنیم تا دکمه همیشه ۱۴px از بالا باشد */
+  align-items: flex-start;
 }
 
 #orderBtn {
@@ -544,7 +549,9 @@ body {
 /* Customizing native WebXR Button overlay */
 #ARButton {
   position: absolute !important;
-  bottom: 340px !important;
+  /* FIX 4: از bottom: 340px تغییر کرد — دیگر روی مدل سه‌بعدی نمی‌افتد */
+  top: 124px !important; /* زیر نوار دسته‌بندی (60 + 54 + 10) */
+  bottom: auto !important; /* override هر bottom که Three.js ست می‌کند */
   left: 50% !important;
   transform: translateX(-50%) !important;
   background: rgba(26, 26, 26, 0.85) !important;
