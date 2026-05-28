@@ -57,40 +57,43 @@
         font-family: "Vazirmatn", sans-serif;
       }
 
-      /* ── NEW: AR Navigation Buttons ── */
-      #ar-nav {
-        display: none;
-        position: fixed;
-        bottom: 110px;
-        left: 0; 
-        right: 0;
-        justify-content: space-between;
-        padding: 0 24px;
-        pointer-events: auto;
-        z-index: 9999;
-        direction: ltr; /* لایه‌بندی دکمه‌ها چپ به راست برای هماهنگی فلش‌ها */
-      }
+/* ── NEW: AR Navigation Buttons (FIXED) ── */
+#ar-nav {
+  display: none;
+  position: absolute; /* تغییر از fixed به absolute برای همگرایی با لایه تمام‌صفحه XR */
+  bottom: 140px; /* افزایش ارتفاع برای تداخل نداشتن با دکمه پیش‌فرض ARButton مرورگر */
+  left: 0; 
+  right: 0;
+  width: 100%;
+  justify-content: space-between;
+  padding: 0 24px;
+  pointer-events: auto; /* بسیار مهم: فعال کردن قابلیت کلیک‌خوری روی کانتینر */
+  z-index: 99999; /* قرارگیری قطعی روی لایه لایو کامپوننت سه بعدی */
+  direction: ltr; /* لایه‌بندی دکمه‌ها چپ به راست برای هماهنگی فلش‌ها */
+}
 
-      #ar-nav.visible {
-        display: flex;
-      }
+#ar-nav.visible {
+  display: flex;
+}
 
-      .ar-nav-btn {
-        background: rgba(10, 10, 18, 0.82);
-        border: 2px solid rgba(255, 200, 80, 0.7);
-        color: #FFD86E;
-        font-size: 18px;
-        font-weight: bold;
-        padding: 12px 24px;
-        border-radius: 50px;
-        cursor: pointer;
-        -webkit-tap-highlight-color: transparent;
-        font-family: "Vazirmatn", sans-serif;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-      }
-      .ar-nav-btn:active {
-        background: rgba(255, 200, 80, 0.2);
-      }
+.ar-nav-btn {
+  background: rgba(10, 10, 18, 0.92); /* تیره‌تر کردن پس‌زمینه برای وضوح بالاتر زیر نور دوربین */
+  border: 2px solid #FFD86E;
+  color: #FFD86E;
+  font-size: 16px;
+  font-weight: bold;
+  padding: 12px 22px;
+  border-radius: 50px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  font-family: "Vazirmatn", sans-serif;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+  pointer-events: auto; /* اطمینان از فعال بودن تاچ خود دکمه */
+}
+
+.ar-nav-btn:active {
+  background: rgba(255, 200, 80, 0.3);
+}
 
       /* ── Loading indicator ── */
       #loadingIndicator {

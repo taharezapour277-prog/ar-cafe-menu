@@ -45,17 +45,38 @@ const arHint = document.getElementById("ar-hint");
 const arNav = document.getElementById("ar-nav"); // ← اضافه شده برای منوی ناوبری AR
 
 // =========================================
-// AR NAV BUTTONS LISTENERS
+// AR NAV BUTTONS LISTENERS (FIXED FOR WEBXR)
 // =========================================
-document.getElementById("ar-prevBtn")?.addEventListener("click", (e) => {
-  e.stopPropagation();
-  navigate(-1);
+const arPrevBtn = document.getElementById("ar-prevBtn");
+const arNextBtn = document.getElementById("ar-nextBtn");
+
+let lastNavTime = 0;
+function safeNavigate(dir) {
+  const now = Date.now();
+  if (now - lastNavTime < 300) return; // جلوگیری از دبل‌کلیک ناخواسته در AR
+  lastNavTime = now;
+  navigate(dir);
+}
+
+// رویداد beforexrselect حیاتی‌ترین بخش برای کارکرد دکمه‌ها روی لایه AR است
+arPrevBtn?.addEventListener("beforexrselect", (e) => {
+  e.preventDefault(); // جلوگیری از شلیک شدن select در WebXR (مانع ریست شدن مکان مدل می‌شود)
+  safeNavigate(-1);
 });
-document.getElementById("ar-nextBtn")?.addEventListener("click", (e) => {
-  e.stopPropagation();
-  navigate(1);
+arNextBtn?.addEventListener("beforexrselect", (e) => {
+  e.preventDefault(); // جلوگیری از شلیک شدن select در WebXR
+  safeNavigate(1);
 });
 
+// بک‌آپ برای اطمینان از کارکرد در شبیه‌سازها و تاچ‌های استاندارد
+arPrevBtn?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  safeNavigate(-1);
+});
+arNextBtn?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  safeNavigate(1);
+});
 // =========================================
 // RENDERER
 // =========================================
