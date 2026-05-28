@@ -209,7 +209,7 @@ function createOrUpdateLabel(product) {
 function positionLabel() {
   if (!labelSprite || !currentModel) return;
   const box = new THREE.Box3().setFromObject(currentModel);
-  labelSprite.position.set(0, box.max.y + 0.16, 0);
+  labelSprite.position.set(0, box.max.y + 0.4, 0);
 }
 
 // =========================================
@@ -264,7 +264,7 @@ function createARArrows() {
 function positionARArrows() {
   if (!prevArrow || !nextArrow || !currentModel) return;
   const box = new THREE.Box3().setFromObject(currentModel);
-  const labelY = box.max.y + 0.16;
+  const labelY = box.max.y + 0.4;
   const hw = (0.2 * 512) / 230 / 2 + 0.07;
   prevArrow.position.set(-hw, labelY, 0);
   nextArrow.position.set(hw, labelY, 0);
@@ -429,15 +429,30 @@ function placeModel() {
 }
 
 // =========================================
-// AR SELECT EVENT  (WebXR tap — replaces unreliable click on canvas)
+// AR SELECT EVENT  (WebXR tap)
 // =========================================
 function onARSelect() {
   if (dragMoved) return;
 
-  // Allow re-placement: reset and show reticle again,
-  // then place when reticle is visible
+  // ── بخش جدید: بررسی کلیک روی فلش‌های سه‌بعدی در حالت AR ──
+  const controller = renderer.xr.getController(0);
+  const tempMatrix = new THREE.Matrix4();
+  tempMatrix.identity().extractRotation(controller.matrixWorld);
+  
+  _raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+  _raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+  
+  const hits = _raycaster.intersectObjects([prevArrow, nextArrow].filter(Boolean));
+  
+  if (hits.length > 0) {
+    // اگر کاربر روی یکی از فلش‌ها کلیک کرد، محصول را تغییر بده و از تابع خارج شو
+    navigate(hits[0].object.userData.navDir === "next" ? 1 : -1);
+    return;
+  }
+  // ─────────────────────────────────────────────────────────
+
+  // اگر روی فلش‌ها کلیک نشده بود، منطق قبلی جاگذاری مدل را اجرا کن
   if (modelPlaced) {
-    // Second tap → re-place (optional UX)
     modelPlaced = false;
     reticle.visible = true;
     rootGroup.visible = false;
@@ -450,7 +465,6 @@ function onARSelect() {
 
   placeModel();
 }
-
 // =========================================
 // NON-AR CLICK: raycast AR arrows (desktop/non-AR fallback)
 // =========================================
@@ -655,7 +669,7 @@ renderer.xr.addEventListener("sessionstart", () => {
   reticle.visible = false;
 
   if (arHint) {
-    arHint.textContent = "🔍 Scanning for a surface…";
+    arHint.textContent = "🔍 در حال اسکن سطح…";
     arHint.style.display = "flex";
   }
   if (bottomPanel) bottomPanel.style.display = "none";
