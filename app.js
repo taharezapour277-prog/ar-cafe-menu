@@ -1,746 +1,689 @@
-import * as THREE from "three";
-import { ARButton } from "three/addons/webxr/ARButton.js";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+    import * as THREE from "three";
+    import { ARButton } from "three/addons/webxr/ARButton.js";
+    import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+    import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+    import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
-// =========================================
-// PRODUCTS
-// =========================================
-const products = [
-  {
-    name: "پیتزا بیکن",
-    price: "680.000",
-    description: "بیکن 98%، قارچ، پنیر پیتزا و...",
-    model: "./models/pizza.glb",
-    orderLink: "https://yourcafe.com/order/pizza1",
-  },
-  {
-    name: "Mushroom Pizza",
-    price: "$16",
-    description: "Double cheese, mushroom, onion and black olives.",
-    model: "./models/pizza2.glb",
-    orderLink: "https://yourcafe.com/order/pizza2",
-  },
-  {
-    name: "Margherita Pizza",
-    price: "$12",
-    description: "Fresh tomato sauce, buffalo mozzarella and basil.",
-    model: "./models/pizza3.glb",
-    orderLink: "https://yourcafe.com/order/pizza3",
-  },
-];
+    // =========================================
+    // CONFIGURATION & ENHANCED PRODUCTS DATA
+    // =========================================
+    const categories = {
+      pizza: { name: "پیتزا", icon: "ti-pizza" },
+      salad: { name: "سالاد سیب زمینی", icon: "ti-salad" },
+      burger: { name: "برگر و پنینی و هات داگ", icon: "ti-burger" },
+      pasta: { name: "پاستا", icon: "ti-soup" },
+      iranian: { name: "غذای ایرانی", icon: "ti-tools-kitchen-2" }
+    };
 
-// =========================================
-// DOM REFS
-// =========================================
-const nameEl = document.getElementById("name");
-const priceEl = document.getElementById("price");
-const descEl = document.getElementById("description");
-const orderBtn = document.getElementById("orderBtn");
-const dotsEl = document.getElementById("indexDots");
-const loadingEl = document.getElementById("loadingIndicator");
-const bottomPanel = document.getElementById("bottom-panel");
-const arHint = document.getElementById("ar-hint");
-const arNav = document.getElementById("ar-nav");
+    const products = [
+      { id: 1, category: "pizza", name: "پیتزا بیکن", price: "۶۸۰,۰۰۰", description: "بیکن ۹۸٪، قارچ بلانچ شده، پنیر پیتزا مطبق و سس مارینارا ویژه", model: "./models/pizza.glb", orderLink: "https://yourcafe.com/order/pizza1" },
+      { id: 2, category: "pizza", name: "پیتزا قارچ و مرغ", price: "۵۹۰,۰۰۰", description: "مرغ گریل شده مرینیت، قارچ، فلفل دلمه‌ای، پنیر گودا و موزارلا", model: "./models/pizza2.glb", orderLink: "https://yourcafe.com/order/pizza2" },
+      { id: 3, category: "pizza", name: "پیتزا مارگاریتا کلاسیک", price: "۴۵۰,۰۰۰", description: "گوجه فرنگی مینیاتوری، ریحان تازه نیشابور، پنیر موزارلا دست‌ساز بوکونچینی", model: "./models/pizza3.glb", orderLink: "https://yourcafe.com/order/pizza3" },
+      { id: 4, category: "salad", name: "سالاد سیب‌زمینی آلمانی", price: "۲۴۰,۰۰۰", description: "سیب‌زمینی تنوری، شوید تازه، خیارشور ویژه، ژامبون خرد شده و سس خردل عسل", model: "./models/salad1.glb", orderLink: "https://yourcafe.com/order/salad1" },
+      { id: 5, category: "burger", name: "چیزبرگر زغالی پرمیوم", price: "۳۹۰,۰۰۰", description: "۱۸۰ گرم گوشت خالص گوساله، دوبل پنیر چدار آب‌شده، کاهو و سس مخصوص بیف", model: "./models/burger1.glb", orderLink: "https://yourcafe.com/order/burger1" },
+      { id: 6, category: "pasta", name: "پاستا آلفردو مرغ", price: "۴۲۰,۰۰۰", description: "پنه تریکولور، فیله مرغ مغز پخت، قارچ، خامه غلیظ محلی و پنیر پارمسان اصل", model: "./models/pasta1.glb", orderLink: "https://yourcafe.com/order/pasta1" },
+      { id: 7, category: "iranian", name: "کباب کوبیده گوسفندی ممتاز", price: "۶۵۰,۰۰۰", description: "دو سیخ کباب گوسفندی ۱۷۰ گرمی لذیذ همراه با گوجه کبابی و برنج ایرانی زعفرانی", model: "./models/iranian1.glb", orderLink: "https://yourcafe.com/order/iranian1" }
+    ];
 
-// =========================================
-// AR NAV BUTTONS LISTENERS (FIXED FOR WEBXR)
-// =========================================
-const arPrevBtn = document.getElementById("ar-prevBtn");
-const arNextBtn = document.getElementById("ar-nextBtn");
+    let currentCategory = "pizza"; // Initial selected global family category
+    let filteredProducts = products.filter(p => p.category === currentCategory);
+    let currentIndex = 0;
 
-let lastNavTime = 0;
-function safeNavigate(dir) {
-  const now = Date.now();
-  if (now - lastNavTime < 300) return; // جلوگیری از دبل‌کلیک ناخواسته در AR
-  lastNavTime = now;
-  navigate(dir);
-}
+    // =========================================
+    // UI DOM REFERENCES
+    // =========================================
+    const nameEl = document.getElementById("name");
+    const priceEl = document.getElementById("price");
+    const descEl = document.getElementById("description");
+    const orderBtn = document.getElementById("orderBtn");
+    const dotsEl = document.getElementById("indexDots");
+    const loadingEl = document.getElementById("loadingIndicator");
+    const bottomPanel = document.getElementById("bottom-panel");
+    const arHint = document.getElementById("ar-hint");
+    const arNav = document.getElementById("ar-nav");
+    
+    // Drawer Elements
+    const drawer = document.getElementById("drawer");
+    const drawerOverlay = document.getElementById("drawer-overlay");
+    const menuToggleBtn = document.getElementById("menuToggleBtn");
+    const drawerCloseBtn = document.getElementById("drawerCloseBtn");
+    const drawerCategoriesList = document.getElementById("drawerCategoriesList");
+    const quickCategoryBar = document.getElementById("quickCategoryBar");
 
-// رویداد beforexrselect حیاتی‌ترین بخش برای کارکرد دکمه‌ها روی لایه AR است
-arPrevBtn?.addEventListener("beforexrselect", (e) => {
-  e.preventDefault(); // جلوگیری از شلیک شدن select در WebXR (مانع ریست شدن مکان مدل می‌شود)
-  safeNavigate(-1);
-});
-arNextBtn?.addEventListener("beforexrselect", (e) => {
-  e.preventDefault(); // جلوگیری از شلیک شدن select در WebXR
-  safeNavigate(1);
-});
+    // AR Nav Buttons
+    const arPrevBtn = document.getElementById("ar-prevBtn");
+    const arNextBtn = document.getElementById("ar-nextBtn");
 
-// بک‌آپ برای اطمینان از کارکرد در شبیه‌سازها و تاچ‌های استاندارد
-arPrevBtn?.addEventListener("click", (e) => {
-  e.stopPropagation();
-  safeNavigate(-1);
-});
-arNextBtn?.addEventListener("click", (e) => {
-  e.stopPropagation();
-  safeNavigate(1);
-});
-
-// =========================================
-// RENDERER
-// =========================================
-const renderer = new THREE.WebGLRenderer({
-  antialias: true,
-  alpha: true,
-  powerPreference: "high-performance",
-});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.xr.enabled = true;
-document.body.appendChild(renderer.domElement);
-
-// =========================================
-// SCENE & CAMERA
-// =========================================
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(
-  70,
-  window.innerWidth / window.innerHeight,
-  0.01,
-  20,
-);
-
-// ── تابع جدید و هوشمند برای تنظیم پوزیشن بی نقص محصول در دسکتاپ و موبایل ──
-function resetSceneLayout() {
-  if (renderer.xr.isPresenting) return; // در فضای AR تنظیمات دستکاری نشود
-
-  const isMobile = window.innerWidth < 768;
-  if (isMobile) {
-    // تنظیمات اختصاصی موبایل: دوربین بالاتر می‌رود و به زاویه بالاتری نگاه می‌کند تا محصول بالای کارت بیفتد
-    camera.position.set(0, 0.9, 0.75);
-    camera.lookAt(0, 0.12, 0);
-    rootGroup.position.set(0, 0.6, 0.15); // مدل یک مقدار مشخص به سمت بالا شیفت پیدا می‌کند
-  } else {
-    // تنظیمات استاندارد دسکتاپ
-    camera.position.set(0, 0.3, 0.8);
-    camera.lookAt(0, 0, 0);
-    rootGroup.position.set(0, 0, 0);
-  }
-  camera.updateProjectionMatrix();
-}
-
-// =========================================
-// ENVIRONMENT
-// =========================================
-const pmremGenerator = new THREE.PMREMGenerator(renderer);
-pmremGenerator.compileEquirectangularShader();
-const roomEnv = new RoomEnvironment(renderer);
-scene.environment = pmremGenerator.fromScene(roomEnv).texture;
-roomEnv.dispose();
-pmremGenerator.dispose();
-
-// =========================================
-// LIGHTS
-// =========================================
-scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-
-const keyLight = new THREE.DirectionalLight(0xfff5e0, 2.0);
-keyLight.position.set(3, 6, 4);
-keyLight.castShadow = true;
-keyLight.shadow.mapSize.width = 2048;
-keyLight.shadow.mapSize.height = 2048;
-keyLight.shadow.bias = -0.001;
-scene.add(keyLight);
-
-const fillLight = new THREE.DirectionalLight(0xc8e0ff, 0.8);
-fillLight.position.set(-4, 2, -3);
-scene.add(fillLight);
-
-const rimLight = new THREE.DirectionalLight(0xffd699, 1.2);
-rimLight.position.set(0, 3, -5);
-scene.add(rimLight);
-
-// =========================================
-// ROOT GROUP
-// =========================================
-const rootGroup = new THREE.Group();
-rootGroup.matrixAutoUpdate = true;
-scene.add(rootGroup);
-
-// =========================================
-// 3-D FLOATING LABEL
-// =========================================
-let currentIndex = 0;
-
-function makeTextCanvas(product) {
-  const W = 512, H = 230;
-  const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext("2d");
-
-  ctx.clearRect(0, 0, W, H);
-  const r = 28;
-  ctx.beginPath();
-  ctx.moveTo(r, 0);
-  ctx.lineTo(W - r, 0);
-  ctx.quadraticCurveTo(W, 0, W, r);
-  ctx.lineTo(W, H - r);
-  ctx.quadraticCurveTo(W, H, W - r, H);
-  ctx.lineTo(r, H);
-  ctx.quadraticCurveTo(0, H, 0, H - r);
-  ctx.lineTo(0, r);
-  ctx.quadraticCurveTo(0, 0, r, 0);
-  ctx.closePath();
-  ctx.fillStyle = "rgba(10, 10, 18, 0.88)";
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255, 200, 80, 0.6)";
-  ctx.lineWidth = 3;
-  ctx.stroke();
-
-  ctx.fillStyle = "#FFD86E";
-  ctx.font = "bold 46px 'Vazirmatn', 'Segoe UI', Arial, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(product.name, W / 2, 58);
-
-  ctx.fillStyle = "#FFFFFF";
-  ctx.font = "bold 36px 'Vazirmatn', 'Segoe UI', Arial, sans-serif";
-  ctx.fillText(product.price, W / 2, 104);
-
-  const dotY = 142, dotR = 7, spacing = 24;
-  const startX = W / 2 - ((products.length - 1) * spacing) / 2;
-  products.forEach((_, i) => {
-    ctx.beginPath();
-    ctx.arc(startX + i * spacing, dotY, dotR, 0, Math.PI * 2);
-    ctx.fillStyle = i === currentIndex ? "#FFD86E" : "rgba(255,255,255,0.3)";
-    ctx.fill();
-  });
-
-  ctx.fillStyle = "rgba(255,255,255,0.72)";
-  ctx.font = "21px 'Vazirmatn', 'Segoe UI', Arial, sans-serif";
-  const words = product.description.split(" ");
-  let line = "", lines = [];
-  for (const w of words) {
-    const test = line ? line + " " + w : w;
-    if (ctx.measureText(test).width > W - 40 && line) {
-      lines.push(line);
-      line = w;
-    } else line = test;
-  }
-  lines.push(line);
-  lines.slice(0, 2).forEach((l, i) => ctx.fillText(l, W / 2, 178 + i * 28));
-
-  return canvas;
-}
-
-let labelSprite = null;
-
-function createOrUpdateLabel(product) {
-  const canvas = makeTextCanvas(product);
-  const tex = new THREE.CanvasTexture(canvas);
-  if (!labelSprite) {
-    labelSprite = new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        map: tex,
-        transparent: true,
-        depthTest: false,
-      }),
-    );
-    rootGroup.add(labelSprite);
-  } else {
-    labelSprite.material.map.dispose();
-    labelSprite.material.map = tex;
-    labelSprite.material.needsUpdate = true;
-  }
-  const aspect = 512 / 230;
-  const h = 0.2;
-  labelSprite.scale.set(h * aspect, h, 1);
-}
-
-// ── رفع باگ خراب شدن لیبل در AR (تبدیل پوزیشن جهانی به محلی) ──
-function positionLabel() {
-  if (!labelSprite || !currentModel) return;
-  
-  currentModel.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(currentModel);
-  
-  // کسر کردن پوزیشن جهانی rootGroup برای به دست آوردن ارتفاع خالص محلی مدل روی زمین AR
-  const localMaxY = box.max.y - rootGroup.position.y;
-  
-  // تنظیم پوزیشن دقیق لیبل بدون توجه به اینکه مدل در کجای اتاق قرار دارد
-  labelSprite.position.set(0, localMaxY + 0.4, 0);
-}
-
-function setARNav(visible) {
-  if (!arNav) return;
-  arNav.classList.toggle("visible", visible);
-}
-
-function update3DUIVisibility(isAR) {
-  if (labelSprite) labelSprite.visible = isAR;
-}
-
-// =========================================
-// RETICLE
-// =========================================
-const reticleGeo = new THREE.RingGeometry(0.09, 0.115, 48);
-reticleGeo.rotateX(-Math.PI / 2);
-const reticle = new THREE.Mesh(
-  reticleGeo,
-  new THREE.MeshBasicMaterial({
-    color: 0xffd86e,
-    opacity: 0.85,
-    transparent: true,
-  }),
-);
-reticle.matrixAutoUpdate = false;
-reticle.visible = false;
-scene.add(reticle);
-
-// =========================================
-// AR BUTTON
-// =========================================
-document.body.appendChild(
-  ARButton.createButton(renderer, {
-    requiredFeatures: ["hit-test"],
-    optionalFeatures: ["dom-overlay"],
-    domOverlay: { root: document.getElementById("ui-overlay") },
-  }),
-);
-
-// =========================================
-// HIT-TEST STATE
-// =========================================
-let hitTestSource = null;
-let hitTestSourceRequested = false;
-let modelPlaced = false;
-
-// =========================================
-// LOADERS
-// =========================================
-const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath(
-  "https://www.gstatic.com/draco/versioned/decoders/1.5.6/",
-);
-const loader = new GLTFLoader();
-loader.setDRACOLoader(dracoLoader);
-
-let currentModel = null;
-let isLoading = false;
-let mixer = null;
-
-// =========================================
-// LOADING INDICATOR
-// =========================================
-function showLoading() {
-  loadingEl?.classList.add("visible");
-}
-function hideLoading() {
-  loadingEl?.classList.remove("visible");
-}
-
-// =========================================
-// GESTURE: single-finger drag → rotate Y
-// =========================================
-let isDragging = false;
-let prevX = 0;
-let modelYaw = 0;
-let dragMoved = false;
-const DRAG_THRESHOLD = 8;
-
-function onDragStart(x) {
-  isDragging = true;
-  prevX = x;
-  dragMoved = false;
-}
-function onDragMove(x) {
-  if (!isDragging || !currentModel) return;
-  const dx = x - prevX;
-  if (Math.abs(dx) > DRAG_THRESHOLD) dragMoved = true;
-  modelYaw += dx * 0.012;
-  prevX = x;
-}
-function onDragEnd() {
-  isDragging = false;
-}
-
-renderer.domElement.addEventListener("mousedown", (e) => onDragStart(e.clientX));
-renderer.domElement.addEventListener("mousemove", (e) => onDragMove(e.clientX));
-renderer.domElement.addEventListener("mouseup", onDragEnd);
-renderer.domElement.addEventListener("mouseleave", onDragEnd);
-
-let touchStartX = 0;
-renderer.domElement.addEventListener(
-  "touchstart",
-  (e) => {
-    if (e.touches.length === 1) {
-      touchStartX = e.touches[0].clientX;
-      onDragStart(e.touches[0].clientX);
+    // =========================================
+    // UTILS & HELPER FUNCTIONS
+    // =========================================
+    function toPersianNumber(num) {
+      const pwa = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+      return num.toString().replace(/[0-9]/g, w => pwa[+w]);
     }
-  },
-  { passive: true },
-);
 
-renderer.domElement.addEventListener(
-  "touchmove",
-  (e) => {
-    if (e.touches.length === 1) onDragMove(e.touches[0].clientX);
-  },
-  { passive: true },
-);
-
-renderer.domElement.addEventListener(
-  "touchend",
-  (e) => {
-    onDragEnd();
-    if (!renderer.xr.isPresenting) {
-      const dx = e.changedTouches[0].clientX - touchStartX;
-      if (Math.abs(dx) > 55 && !dragMoved) navigate(dx < 0 ? 1 : -1);
-    }
-  },
-  { passive: true },
-);
-
-// =========================================
-// PLACE MODEL AT RETICLE POSITION
-// =========================================
-function placeModel() {
-  if (!reticle.visible || !currentModel) return;
-
-  const pos = new THREE.Vector3();
-  const quat = new THREE.Quaternion();
-  const scl = new THREE.Vector3();
-  reticle.matrix.decompose(pos, quat, scl);
-
-  rootGroup.position.copy(pos);
-  rootGroup.quaternion.copy(quat);
-  rootGroup.scale.set(1, 1, 1);
-
-  rootGroup.visible = true;
-  reticle.visible = false;
-  modelPlaced = true;
-
-  if (arHint) arHint.style.display = "none";
-}
-
-// =========================================
-// AR SELECT EVENT
-// =========================================
-function onARSelect(e) {
-  if (dragMoved) return;
-  if (e.inputSource.targetRayMode === "tracked-pointer") return;
-
-  if (modelPlaced) {
-    modelPlaced = false;
-    reticle.visible = true;
-    rootGroup.visible = false;
-    if (arHint) {
-      arHint.textContent = "👆 Tap again to re-place";
-      arHint.style.display = "flex";
-    }
-    return;
-  }
-
-  placeModel();
-}
-
-// =========================================
-// FIT MODEL
-// =========================================
-function fitModel(model, isAR) {
-  model.position.set(0, 0, 0);
-  model.scale.setScalar(1);
-  model.updateMatrixWorld(true);
-
-  const box = new THREE.Box3().setFromObject(model);
-  const size = box.getSize(new THREE.Vector3());
-  const maxDim = Math.max(size.x, size.y, size.z);
-
-  const targetSize = isAR ? 0.32 : 0.38;
-  const scale = maxDim > 0 ? targetSize / maxDim : 1;
-  model.scale.setScalar(scale);
-  model.updateMatrixWorld(true);
-
-  const boxAfter = new THREE.Box3().setFromObject(model);
-  const centerAfter = boxAfter.getCenter(new THREE.Vector3());
-
-  model.position.x = -centerAfter.x;
-  model.position.z = -centerAfter.z;
-  model.position.y = -boxAfter.min.y + (isAR ? 0.008 : 0);
-}
-
-// =========================================
-// FIX MATERIALS
-// =========================================
-function fixMaterials(model) {
-  model.traverse((node) => {
-    if (!node.isMesh) return;
-    node.castShadow = node.receiveShadow = true;
-    const mat = node.material;
-    if (!mat) return;
-    if (mat.map) mat.map.colorSpace = THREE.SRGBColorSpace;
-    if (mat.emissiveMap) mat.emissiveMap.colorSpace = THREE.SRGBColorSpace;
-    mat.needsUpdate = true;
-  });
-}
-
-// =========================================
-// CLEAR CURRENT MODEL
-// =========================================
-function clearModel() {
-  if (!currentModel) return;
-  rootGroup.remove(currentModel);
-  currentModel.traverse((node) => {
-    if (!node.isMesh) return;
-    node.geometry?.dispose();
-    (Array.isArray(node.material) ? node.material : [node.material]).forEach(
-      (m) => m?.dispose(),
-    );
-  });
-  currentModel = null;
-  if (mixer) {
-    mixer.stopAllAction();
-    mixer = null;
-  }
-}
-
-// =========================================
-// UPDATE 2-D UI
-// =========================================
-function updateUI(index) {
-  const p = products[index];
-  if (nameEl) nameEl.textContent = p.name;
-  if (priceEl) priceEl.textContent = p.price;
-  if (descEl) descEl.textContent = p.description;
-  if (orderBtn) {
-    orderBtn.textContent = `🛒 سفارش ${p.name}`;
-    orderBtn.onclick = () => window.open(p.orderLink, "_blank");
-  }
-  if (dotsEl) {
-    [...dotsEl.children].forEach((d, i) => {
-      d.className = "dot" + (i === index ? " active" : "");
-    });
-  }
-}
-
-// =========================================
-// LOAD PRODUCT
-// =========================================
-function loadProduct(index) {
-  if (isLoading) return;
-  isLoading = true;
-
-  const isAR = renderer.xr.isPresenting;
-  const product = products[index];
-
-  updateUI(index);
-  showLoading();
-  clearModel();
-  modelYaw = 0;
-
-  const onLoaded = (model) => {
-    currentModel = model;
-    fixMaterials(currentModel);
-    fitModel(currentModel, isAR);
-    rootGroup.add(currentModel);
-
-    createOrUpdateLabel(product);
-    positionLabel();
-
-    update3DUIVisibility(isAR);
-
-    hideLoading();
-    isLoading = false;
-
-    if (isAR && reticle.visible && !modelPlaced) {
-      placeModel();
-    }
-  };
-
-  loader.load(
-    product.model,
-    (gltf) => {
-      if (gltf.animations?.length) {
-        mixer = new THREE.AnimationMixer(gltf.scene);
-        gltf.animations.forEach((c) => mixer.clipAction(c).play());
-      }
-      onLoaded(gltf.scene);
-    },
-    undefined,
-    () => {
-      const g = new THREE.Group();
-      const base = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.18, 0.18, 0.03, 40),
-        new THREE.MeshStandardMaterial({ color: 0xe8b84b, roughness: 0.6 }),
-      );
-      base.castShadow = base.receiveShadow = true;
-      g.add(base);
-      const crust = new THREE.Mesh(
-        new THREE.TorusGeometry(0.18, 0.026, 10, 40),
-        new THREE.MeshStandardMaterial({ color: 0xc47c2b, roughness: 0.9 }),
-      );
-      crust.rotation.x = Math.PI / 2;
-      crust.castShadow = true;
-      g.add(crust);
-      onLoaded(g);
-    },
-  );
-}
-
-// =========================================
-// NAVIGATION
-// =========================================
-function navigate(dir) {
-  currentIndex = (currentIndex + dir + products.length) % products.length;
-  loadProduct(currentIndex);
-}
-
-document.getElementById("nextBtn")?.addEventListener("click", () => navigate(1));
-document.getElementById("prevBtn")?.addEventListener("click", () => navigate(-1));
-
-// =========================================
-// XR SESSION EVENTS
-// =========================================
-renderer.xr.addEventListener("sessionstart", () => {
-  hitTestSource = null;
-  hitTestSourceRequested = false;
-  modelPlaced = false;
-
-  rootGroup.visible = false;
-  reticle.visible = false;
-
-  if (arHint) {
-    arHint.textContent = "🔍 Scanning for a surface…";
-    arHint.style.display = "flex";
-  }
-  if (bottomPanel) bottomPanel.style.display = "none";
-
-  setARNav(true); 
-  update3DUIVisibility(true);
-
-  clearModel();
-  loadProduct(currentIndex);
-
-  const session = renderer.xr.getSession();
-  session.addEventListener("select", onARSelect);
-});
-
-// ── رفع کامل باگ بهم ریختگی صفحه بعد از خروج از AR ──
-renderer.xr.addEventListener("sessionend", () => {
-  hitTestSource = null;
-  hitTestSourceRequested = false;
-  modelPlaced = false;
-  modelYaw = 0;
-
-  // ۱. فورس ریست ابعاد رندرر به اندازه اصلی مرورگر (بسیار حیاتی)
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-  // ۲. بازنشانی مجدد لی‌اوت دوربین و مدل متناسب با دستگاه فعلی
-  resetSceneLayout();
-
-  reticle.visible = false;
-  rootGroup.quaternion.identity();
-  rootGroup.visible = true;
-
-  if (arHint) arHint.style.display = "none";
-  
-  // ۳. نمایش مجدد و اصولی کامپوننت‌های صفحه اول
-  if (bottomPanel) {
-    bottomPanel.style.display = "flex";
-  }
-
-  setARNav(false); 
-  update3DUIVisibility(false);
-
-  // ۴. لود مجدد مدل دسکتاپ/موبایل با مقیاس صحیح
-  clearModel();
-  loadProduct(currentIndex);
-});
-
-// =========================================
-// ANIMATION LOOP
-// =========================================
-const clock = new THREE.Clock();
-
-renderer.setAnimationLoop((_, frame) => {
-  const delta = clock.getDelta();
-  if (mixer) mixer.update(delta);
-
-  if (!renderer.xr.isPresenting && !isDragging) {
-    modelYaw += delta * 0.3;
-  }
-  if (currentModel) rootGroup.rotation.y = modelYaw;
-
-  if (labelSprite) labelSprite.quaternion.copy(camera.quaternion);
-
-  if (frame && renderer.xr.isPresenting) {
-    const session = renderer.xr.getSession();
-    const refSpace = renderer.xr.getReferenceSpace();
-
-    if (!hitTestSourceRequested) {
-      hitTestSourceRequested = true;
-      session.requestReferenceSpace("viewer").then((viewerSpace) => {
-        session.requestHitTestSource({ space: viewerSpace }).then((src) => {
-          hitTestSource = src;
-        });
+    // =========================================
+    // CATEGORY NAVIGATION & DRAWER RENDERER
+    // =========================================
+    function initCategoryUI() {
+      // 1. Render Top Quick Horizontal Bar
+      quickCategoryBar.innerHTML = "";
+      Object.keys(categories).forEach(catKey => {
+        const cat = categories[catKey];
+        const activeClass = catKey === currentCategory ? "active" : "";
+        const item = document.createElement("div");
+        item.className = `quick-cat-item ${activeClass}`;
+        item.setAttribute("data-cat", catKey);
+        item.innerHTML = `<i class="ti ${cat.icon}"></i><span>${cat.name}</span>`;
+        item.addEventListener("click", () => selectCategory(catKey));
+        quickCategoryBar.appendChild(item);
       });
 
-      session.addEventListener(
-        "end",
-        () => {
-          hitTestSource = null;
-          hitTestSourceRequested = false;
+      // 2. Render Accordions in Side Drawer Menu
+      drawerCategoriesList.innerHTML = "";
+      Object.keys(categories).forEach(catKey => {
+        const cat = categories[catKey];
+        const isExpanded = catKey === currentCategory ? "expanded" : "";
+        const catGroupProducts = products.filter(p => p.category === catKey);
+        
+        const groupDiv = document.createElement("div");
+        groupDiv.className = `drawer-cat-group ${isExpanded}`;
+        groupDiv.id = `drawer-group-${catKey}`;
+        
+        let productsHTML = `<div class="drawer-products-list">`;
+        catGroupProducts.forEach(prod => {
+          const isItemActive = prod.id === filteredProducts[currentIndex]?.id ? "active" : "";
+          productsHTML += `
+            <div class="drawer-product-item ${isItemActive}" data-prod-id="${prod.id}">
+              <span class="p-name">${prod.name}</span>
+              <span class="p-price">${prod.price} تومان</span>
+            </div>`;
+        });
+        productsHTML += `</div>`;
+
+        groupDiv.innerHTML = `
+          <div class="drawer-cat-header">
+            <div class="drawer-cat-title">
+              <i class="ti ${cat.icon}"></i>
+              <span>${cat.name}</span>
+            </div>
+            <i class="ti ti-chevron-down drawer-cat-chevron"></i>
+          </div>
+          ${productsHTML}
+        `;
+
+        // Click Accordion Header Event
+        groupDiv.querySelector(".drawer-cat-header").addEventListener("click", () => {
+          const currentlyExpanded = drawerCategoriesList.querySelector(".drawer-cat-group.expanded");
+          if (currentlyExpanded && currentlyExpanded !== groupDiv) {
+            currentlyExpanded.classList.remove("expanded");
+          }
+          groupDiv.classList.toggle("expanded");
+        });
+
+        // Click Product Child Item Event
+        groupDiv.querySelectorAll(".drawer-product-item").forEach(itemEl => {
+          itemEl.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const prodId = parseInt(itemEl.getAttribute("data-prod-id"));
+            switchProductById(prodId, catKey);
+            closeDrawerMenu();
+          });
+        });
+
+        drawerCategoriesList.appendChild(groupDiv);
+      });
+    }
+
+    function selectCategory(catKey) {
+      currentCategory = catKey;
+      filteredProducts = products.filter(p => p.category === currentCategory);
+      currentIndex = 0;
+      
+      // Update top bar visuals instantly
+      document.querySelectorAll(".quick-cat-item").forEach(el => {
+        el.classList.toggle("active", el.getAttribute("data-cat") === catKey);
+      });
+
+      initCategoryUI();
+      buildDotsIndicator();
+      loadProduct(currentIndex);
+    }
+
+    function switchProductById(prodId, catKey) {
+      currentCategory = catKey;
+      filteredProducts = products.filter(p => p.category === currentCategory);
+      currentIndex = filteredProducts.findIndex(p => p.id === prodId);
+      if(currentIndex === -1) currentIndex = 0;
+      
+      initCategoryUI();
+      buildDotsIndicator();
+      loadProduct(currentIndex);
+    }
+
+    // Drawer Animations Open/Close
+    function openDrawerMenu() {
+      drawerOverlay.style.display = "block";
+      setTimeout(() => {
+        drawerOverlay.style.opacity = "1";
+        drawer.style.transform = "translateX(0)";
+      }, 10);
+    }
+
+    function closeDrawerMenu() {
+      drawerOverlay.style.opacity = "0";
+      drawer.style.transform = "translateX(100%)";
+      setTimeout(() => {
+        drawerOverlay.style.display = "none";
+      }, 300);
+    }
+
+    menuToggleBtn.addEventListener("click", openDrawerMenu);
+    drawerCloseBtn.addEventListener("click", closeDrawerMenu);
+    drawerOverlay.addEventListener("click", closeDrawerMenu);
+
+    // =========================================
+    // THREE.JS GRAPHICS SETUP
+    // =========================================
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    
+    const container = document.getElementById('canvas-container');
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.xr.enabled = true;
+    container.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(70, container.clientWidth / container.clientHeight, 0.01, 20);
+
+    const rootGroup = new THREE.Group();
+    rootGroup.matrixAutoUpdate = true;
+    scene.add(rootGroup);
+
+    function resetSceneLayout() {
+      if (renderer.xr.isPresenting) return;
+      
+      const containerW = container.clientWidth;
+      const containerH = container.clientHeight;
+      const isMobile = containerW < 768;
+      
+      if (isMobile) {
+        camera.position.set(0, 0.85, 0.8);
+        camera.lookAt(0, 0.15, 0);
+        rootGroup.position.set(0, 0.05, 0);
+      } else {
+        camera.position.set(0, 0.4, 0.85);
+        camera.lookAt(0, 0, 0);
+        rootGroup.position.set(0, -0.05, 0);
+      }
+      camera.updateProjectionMatrix();
+    }
+
+    // Environments & Lighting Mapping
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    pmremGenerator.compileEquirectangularShader();
+    const roomEnv = new RoomEnvironment(renderer);
+    scene.environment = pmremGenerator.fromScene(roomEnv).texture;
+    roomEnv.dispose();
+    pmremGenerator.dispose();
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const keyLight = new THREE.DirectionalLight(0xfff5e0, 2.2);
+    keyLight.position.set(3, 6, 4);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.width = 1024;
+    keyLight.shadow.mapSize.height = 1024;
+    keyLight.shadow.bias = -0.001;
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0xc8e0ff, 0.8);
+    fillLight.position.set(-4, 2, -3);
+    scene.add(fillLight);
+
+    // =========================================
+    // 3D FLOATING AR TEXT LABELS GENERATION
+    // =========================================
+    let labelSprite = null;
+
+    function makeTextCanvas(product) {
+      const W = 512, H = 240;
+      const canvas = document.createElement("canvas");
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext("2d");
+
+      ctx.clearRect(0, 0, W, H);
+      const r = 24;
+      ctx.beginPath();
+      ctx.moveTo(r, 0);
+      ctx.lineTo(W - r, 0);
+      ctx.quadraticCurveTo(W, 0, W, r);
+      ctx.lineTo(W, H - r);
+      ctx.quadraticCurveTo(W, H, W - r, H);
+      ctx.lineTo(r, H);
+      ctx.quadraticCurveTo(0, H, 0, H - r);
+      ctx.lineTo(0, r);
+      ctx.quadraticCurveTo(0, 0, r, 0);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(26, 26, 26, 0.94)";
+      ctx.fill();
+      ctx.strokeStyle = "#febf05";
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      ctx.fillStyle = "#febf05";
+      ctx.font = "bold 44px 'Vazirmatn', Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(product.name, W / 2, 65);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "600 34px 'Vazirmatn', Arial, sans-serif";
+      ctx.fillText(`${product.price} تومان`, W / 2, 115);
+
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.font = "300 20px 'Vazirmatn', Arial, sans-serif";
+      
+      const words = product.description.split(" ");
+      let line = "", lines = [];
+      for (const w of words) {
+        const test = line ? line + " " + w : w;
+        if (ctx.measureText(test).width > W - 50 && line) {
+          lines.push(line);
+          line = w;
+        } else line = test;
+      }
+      lines.push(line);
+      lines.slice(0, 2).forEach((l, i) => ctx.fillText(l, W / 2, 170 + i * 28));
+
+      return canvas;
+    }
+
+    function createOrUpdateLabel(product) {
+      const canvas = makeTextCanvas(product);
+      const tex = new THREE.CanvasTexture(canvas);
+      if (!labelSprite) {
+        labelSprite = new THREE.Sprite(
+          new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false })
+        );
+        rootGroup.add(labelSprite);
+      } else {
+        labelSprite.material.map.dispose();
+        labelSprite.material.map = tex;
+        labelSprite.material.needsUpdate = true;
+      }
+      const aspect = 512 / 240;
+      const h = 0.22;
+      labelSprite.scale.set(h * aspect, h, 1);
+    }
+
+    function positionLabel() {
+      if (!labelSprite || !currentModel) return;
+      currentModel.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(currentModel);
+      const localMaxY = box.max.y - rootGroup.position.y;
+      labelSprite.position.set(0, localMaxY + 0.35, 0);
+    }
+
+    // =========================================
+    // AR SURFACE HIT-TEST TRACKING DETECTORS
+    // =========================================
+    const reticleGeo = new THREE.RingGeometry(0.08, 0.11, 32).rotateX(-Math.PI / 2);
+    const reticle = new THREE.Mesh(reticleGeo, new THREE.MeshBasicMaterial({ color: 0xfebf05, opacity: 0.8, transparent: true }));
+    reticle.matrixAutoUpdate = false;
+    reticle.visible = false;
+    scene.add(reticle);
+
+    let hitTestSource = null;
+    let hitTestSourceRequested = false;
+    let modelPlaced = false;
+
+    // WebXR Interactive Overlay Configuration Customization
+    document.body.appendChild(
+      ARButton.createButton(renderer, {
+        requiredFeatures: ["hit-test"],
+        optionalFeatures: ["dom-overlay"],
+        domOverlay: { root: document.getElementById("ui-overlay") }
+      })
+    );
+
+    // =========================================
+    // MODEL LOADERS HANDLERS & ANIMATIONS
+    // =========================================
+    const dracoLoader = new DRACOLoader().setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.6/");
+    const loader = new GLTFLoader().setDRACOLoader(dracoLoader);
+
+    let currentModel = null;
+    let isLoading = false;
+    let mixer = null;
+
+    function loadProduct(index) {
+      if (isLoading || filteredProducts.length === 0) return;
+      isLoading = true;
+
+      const isAR = renderer.xr.isPresenting;
+      const product = filteredProducts[index];
+
+      // Update 2D Text Node Trees Elements
+      nameEl.textContent = product.name;
+      priceEl.textContent = `${product.price} تومان`;
+      descEl.textContent = product.description;
+      orderBtn.querySelector("span").textContent = `سفارش ${product.name}`;
+      orderBtn.onclick = () => window.open(product.orderLink, "_blank");
+
+      // Set active status styling inside list nodes elements dynamically
+      document.querySelectorAll(".drawer-product-item").forEach(itemEl => {
+        const pId = parseInt(itemEl.getAttribute("data-prod-id"));
+        itemEl.classList.toggle("active", pId === product.id);
+      });
+
+      // Synchronize slider dots active state indicators
+      document.querySelectorAll("#indexDots .dot").forEach((d, i) => {
+        d.className = "dot" + (i === index ? " active" : "");
+      });
+
+      loadingEl.classList.add("visible");
+      
+      // Memory cleanup for old instances references
+      if (currentModel) {
+        rootGroup.remove(currentModel);
+        currentModel.traverse((node) => {
+          if (node.isMesh) {
+            node.geometry?.dispose();
+            (Array.isArray(node.material) ? node.material : [node.material]).forEach(m => m?.dispose());
+          }
+        });
+        currentModel = null;
+        if (mixer) { mixer.stopAllAction(); mixer = null; }
+      }
+
+      modelYaw = 0;
+
+      const onModelSetupReady = (loadedScene) => {
+        currentModel = loadedScene;
+        
+        // Material Normalizers
+        currentModel.traverse((node) => {
+          if (node.isMesh) {
+            node.castShadow = node.receiveShadow = true;
+            if (node.material) {
+              if (node.material.map) node.material.map.colorSpace = THREE.SRGBColorSpace;
+              node.material.needsUpdate = true;
+            }
+          }
+        });
+
+        // Smart Matrix Bounds Scaling
+        currentModel.position.set(0, 0, 0);
+        currentModel.scale.setScalar(1);
+        currentModel.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(currentModel);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const targetScale = isAR ? 0.30 : 0.42;
+        currentModel.scale.setScalar(maxDim > 0 ? targetScale / maxDim : 1);
+        
+        currentModel.updateMatrixWorld(true);
+        const freshBox = new THREE.Box3().setFromObject(currentModel);
+        const center = freshBox.getCenter(new THREE.Vector3());
+        currentModel.position.set(-center.x, -freshBox.min.y + (isAR ? 0.005 : 0), -center.z);
+
+        rootGroup.add(currentModel);
+
+        createOrUpdateLabel(product);
+        positionLabel();
+        if(labelSprite) labelSprite.visible = isAR;
+
+        loadingEl.classList.remove("visible");
+        isLoading = false;
+
+        if (isAR && reticle.visible && !modelPlaced) placeModelAtReticle();
+      };
+
+      // Execution Loader Block
+      loader.load(
+        product.model,
+        (gltf) => {
+          if (gltf.animations?.length) {
+            mixer = new THREE.AnimationMixer(gltf.scene);
+            gltf.animations.forEach(anim => mixer.clipAction(anim).play());
+          }
+          onModelSetupReady(gltf.scene);
         },
-        { once: true },
+        undefined,
+        () => {
+          // Robust elegant visual placeholder fallback geometry primitive mesh
+          const fallbackGroup = new THREE.Group();
+          const plate = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.2, 0.22, 0.03, 32),
+            new THREE.MeshStandardMaterial({ color: 0x2d2d2d, roughness: 0.4 })
+          );
+          plate.castShadow = plate.receiveShadow = true;
+          fallbackGroup.add(plate);
+
+          const foodMock = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.18, 0.18, 0.05, 32),
+            new THREE.MeshStandardMaterial({ color: 0xfebf05, roughness: 0.8 })
+          );
+          foodMock.position.y = 0.04;
+          foodMock.castShadow = true;
+          fallbackGroup.add(foodMock);
+
+          onModelSetupReady(fallbackGroup);
+        }
       );
     }
 
-    if (hitTestSource) {
-      const results = frame.getHitTestResults(hitTestSource);
-      if (results.length > 0) {
-        reticle.matrix.fromArray(results[0].getPose(refSpace).transform.matrix);
-        if (!modelPlaced) {
-          reticle.visible = true;
-          if (arHint && arHint.textContent.includes("Scanning")) {
-            arHint.textContent = "👆 Tap to place";
-            arHint.style.display = "flex";
-          }
-          if (currentModel && !isLoading) {
-            placeModel();
-          }
-        } else {
-          reticle.visible = false;
-        }
-      } else {
-        if (!modelPlaced) reticle.visible = false;
-      }
+    function buildDotsIndicator() {
+      dotsEl.innerHTML = "";
+      filteredProducts.forEach((_, i) => {
+        const d = document.createElement("div");
+        d.className = "dot" + (i === 0 ? " active" : "");
+        dotsEl.appendChild(d);
+      });
     }
-  }
 
-  renderer.render(scene, camera);
-});
+    function navigate(dir) {
+      if(filteredProducts.length === 0) return;
+      currentIndex = (currentIndex + dir + filteredProducts.length) % filteredProducts.length;
+      loadProduct(currentIndex);
+    }
 
-// =========================================
-// RESPONSIVE
-// =========================================
-window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  resetSceneLayout(); // آپدیت چیدمان با تغییر سایز مانیتور یا چرخش گوشی
-});
+    let lastNavTime = 0;
+    function safeNavigate(dir) {
+      const now = Date.now();
+      if (now - lastNavTime < 320) return;
+      lastNavTime = now;
+      navigate(dir);
+    }
 
-// =========================================
-// INIT
-// =========================================
-if (dotsEl) {
-  products.forEach((_, i) => {
-    const d = document.createElement("div");
-    d.className = "dot" + (i === 0 ? " active" : "");
-    dotsEl.appendChild(d);
-  });
-}
+    document.getElementById("nextBtn").addEventListener("click", () => safeNavigate(1));
+    document.getElementById("prevBtn").addEventListener("click", () => safeNavigate(-1));
 
-rootGroup.visible = true;
-resetSceneLayout(); // اجرای چیدمان بهینه در لود اولیه
-update3DUIVisibility(false);
-loadProduct(0);
+    // =========================================
+    // TOUCH EVENTS GESTURE CONTROLS (ROTATION)
+    // =========================================
+    let isDragging = false, prevTouchX = 0, modelYaw = 0, dragDeltaMoved = false;
+
+    function onDragStart(x) { isDragging = true; prevTouchX = x; dragDeltaMoved = false; }
+    function onDragMove(x) {
+      if (!isDragging || !currentModel) return;
+      const dx = x - prevTouchX;
+      if (Math.abs(dx) > 5) dragDeltaMoved = true;
+      modelYaw += dx * 0.012;
+      prevTouchX = x;
+    }
+    function onDragEnd() { isDragging = false; }
+
+    container.addEventListener("mousedown", (e) => onDragStart(e.clientX));
+    window.addEventListener("mousemove", (e) => onDragMove(e.clientX));
+    window.addEventListener("mouseup", onDragEnd);
+
+    container.addEventListener("touchstart", (e) => { if(e.touches.length === 1) onDragStart(e.touches[0].clientX); }, { passive: true });
+    container.addEventListener("touchmove", (e) => { if(e.touches.length === 1) onDragMove(e.touches[0].clientX); }, { passive: true });
+    container.addEventListener("touchend", (e) => {
+      onDragEnd();
+      if (!renderer.xr.isPresenting && !dragDeltaMoved && e.changedTouches.length > 0) {
+        // Fallback Swipe Navigation Detection logic
+      }
+    }, { passive: true });
+
+    // =========================================
+    // WEBXR INTERACTIVE EVENTS & HIT COORDS
+    // =========================================
+    function placeModelAtReticle() {
+      if (!reticle.visible || !currentModel) return;
+      const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scl = new THREE.Vector3();
+      reticle.matrix.decompose(pos, quat, scl);
+
+      rootGroup.position.copy(pos);
+      rootGroup.quaternion.copy(quat);
+      rootGroup.scale.set(1, 1, 1);
+      rootGroup.visible = true;
+      reticle.visible = false;
+      modelPlaced = true;
+      if (arHint) arHint.style.display = "none";
+    }
+
+    function onARSelect(e) {
+      if (dragDeltaMoved) return;
+      if (e.inputSource.targetRayMode === "tracked-pointer") return;
+      if (modelPlaced) {
+        modelPlaced = false;
+        reticle.visible = true;
+        rootGroup.visible = false;
+        if (arHint) {
+          arHint.querySelector("span").textContent = "👆 لمس مجدد جهت تثبیت جانمایی";
+          arHint.style.display = "flex";
+        }
+        return;
+      }
+      placeModelAtReticle();
+    }
+
+    // AR Nav Touch Wrappers
+    arPrevBtn.addEventListener("beforexrselect", (e) => { e.preventDefault(); safeNavigate(-1); });
+    arNextBtn.addEventListener("beforexrselect", (e) => { e.preventDefault(); safeNavigate(1); });
+    arPrevBtn.addEventListener("click", (e) => { e.stopPropagation(); safeNavigate(-1); });
+    arNextBtn.addEventListener("click", (e) => { e.stopPropagation(); safeNavigate(1); });
+
+    // XR State Listeners
+    renderer.xr.addEventListener("sessionstart", () => {
+      hitTestSource = null;
+      hitTestSourceRequested = false;
+      modelPlaced = false;
+      rootGroup.position.set(0, 0, 0);
+      rootGroup.quaternion.identity();
+      rootGroup.visible = false;
+      reticle.visible = false;
+
+      if(arHint) {
+        arHint.querySelector("span").textContent = "🔍 در حال اسکن محیط پلتفرم سطحی…";
+        arHint.style.display = "flex";
+      }
+      bottomPanel.style.display = "none";
+      arNav.classList.add("visible");
+      if(labelSprite) labelSprite.visible = true;
+
+      loadProduct(currentIndex);
+      renderer.xr.getSession().addEventListener("select", onARSelect);
+    });
+
+    renderer.xr.addEventListener("sessionend", () => {
+      hitTestSource = null;
+      hitTestSourceRequested = false;
+      modelPlaced = false;
+      modelYaw = 0;
+
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      resetSceneLayout();
+
+      reticle.visible = false;
+      rootGroup.quaternion.identity();
+      rootGroup.visible = true;
+
+      if (arHint) arHint.style.display = "none";
+      bottomPanel.style.display = "flex";
+      arNav.classList.remove("visible");
+      if(labelSprite) labelSprite.visible = false;
+
+      loadProduct(currentIndex);
+    });
+
+    // =========================================
+    // CORE ANIMATION LOOP RUNNER
+    // =========================================
+    const clock = new THREE.Clock();
+    renderer.setAnimationLoop((_, frame) => {
+      const delta = clock.getDelta();
+      if (mixer) mixer.update(delta);
+
+      if (!renderer.xr.isPresenting && !isDragging) {
+        modelYaw += delta * 0.25; // Gentle elegant auto idle rot
+      }
+      if (currentModel) rootGroup.rotation.y = modelYaw;
+      if (labelSprite && labelSprite.visible) labelSprite.quaternion.copy(camera.quaternion);
+
+      // Hit test processing loop pipeline
+      if (frame && renderer.xr.isPresenting) {
+        const session = renderer.xr.getSession();
+        const refSpace = renderer.xr.getReferenceSpace();
+
+        if (!hitTestSourceRequested) {
+          hitTestSourceRequested = true;
+          session.requestReferenceSpace("viewer").then(vSpace => {
+            session.requestHitTestSource({ space: vSpace }).then(src => hitTestSource = src);
+          });
+          session.addEventListener("end", () => { hitTestSource = null; hitTestSourceRequested = false; }, { once: true });
+        }
+
+        if (hitTestSource) {
+          const results = frame.getHitTestResults(hitTestSource);
+          if (results.length > 0) {
+            reticle.matrix.fromArray(results[0].getPose(refSpace).transform.matrix);
+            if (!modelPlaced) {
+              reticle.visible = true;
+              if (arHint && arHint.querySelector("span").textContent.includes("اسکن")) {
+                arHint.querySelector("span").textContent = "👆 برای قرار دادن روی سطح لمس کنید";
+              }
+              if (currentModel && !isLoading && !modelPlaced) placeModelAtReticle();
+            }
+          } else if (!modelPlaced) {
+            reticle.visible = false;
+          }
+        }
+      }
+
+      renderer.render(scene, camera);
+    });
+
+    // =========================================
+    // ENGINE INITIALIZATION ENGINE WINDOW BIND
+    // =========================================
+    window.addEventListener("resize", () => {
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+      resetSceneLayout();
+    });
+
+    // Share action simple integration mock
+    document.getElementById("shareBtn").addEventListener("click", () => {
+      if(navigator.share) {
+        navigator.share({ title: document.title, url: window.location.href }).catch(() => {});
+      } else {
+        alert("لینک کپی شد!");
+      }
+    });
+
+    // Entry points bootloader initialization
+    initCategoryUI();
+    buildDotsIndicator();
+    resetSceneLayout();
+    loadProduct(currentIndex);

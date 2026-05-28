@@ -1,28 +1,47 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fa" dir="rtl">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, user-scalable=no"
-    />
-    <title>AR Cafe Menu</title>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>منوی هوشمند سه بعدی و واقعیت افزوده (AR)</title>
 
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-        }
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
       }
-    </script>
+    }
+  </script>
 
-    <link rel="stylesheet" href="./style.css">
-  </head>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
 
-  <body>
+  <div id="app">
+    <div id="canvas-container"></div>
+
+    <div class="topnav">
+      <button class="icon-btn" id="menuToggleBtn" aria-label="منوی اصلی">
+        <i class="ti ti-menu-2"></i>
+      </button>
+      <div class="nav-title">منو دیجیتال کافه رستوران</div>
+      <button class="icon-btn" id="shareBtn" aria-label="اشتراک گذاری">
+        <i class="ti ti-share"></i>
+      </button>
+    </div>
+
+    <div class="category-quick-bar" id="quickCategoryBar">
+      </div>
+
     <div id="ui-overlay">
-      <div id="ar-hint">🔍 در حال اسکن سطح…</div>
+      <div id="ar-hint"><i class="ti ti-scan"></i> <span>در حال اسکن سطح…</span></div>
 
       <div id="ar-nav">
         <button class="ar-nav-btn" id="ar-prevBtn">◀ بعدی</button>
@@ -35,33 +54,47 @@
           <span class="loading-dot"></span>
           <span class="loading-dot"></span>
         </div>
-        <div class="loading-label">در حال بارگذاری مدل…</div>
+        <div class="loading-label">در حال بارگذاری مدل سه بعدی…</div>
       </div>
+    </div>
 
+    <div class="scroll-area">
       <div id="bottom-panel">
         <div id="indexDots"></div>
 
         <div class="top-row">
-          <div id="name">پیتزا پپرونی</div>
-          <div id="price">230,000</div>
+          <div id="name">بارگذاری...</div>
+          <div id="price">...</div>
         </div>
 
-        <div id="description">بیکن ۹۸٪، قارچ، پنیر پیتزا و...</div>
+        <div id="description">توضیحات محصول</div>
 
         <div class="nav-row">
-          <button class="switch-btn" id="prevBtn">قبلی ▶</button>
-          <button class="switch-btn" id="nextBtn">◀ بعدی</button>
+          <button class="switch-btn" id="prevBtn">قبلی <i class="ti ti-chevron-left"></i></button>
+          <button class="switch-btn" id="nextBtn"><i class="ti ti-chevron-right"></i> بعدی</button>
         </div>
-
-        <button id="orderBtn">🛒 سفارش این محصول</button>
-
+        
         <div class="brand">
-          Powered by
-          <a href="https://yourwebsite.com" target="_blank">AR</a>
+          Powered by <a href="#" target="_blank">AR System</a>
         </div>
       </div>
     </div>
 
-    <script type="module" src="./app.js"></script>
-  </body>
+    <div class="bottom-action-bar">
+      <button id="orderBtn"><i class="ti ti-shopping-cart"></i> <span>سفارش این محصول</span></button>
+    </div>
+
+    <div id="drawer-overlay"></div>
+    <div id="drawer">
+      <div class="drawer-header">
+        <h3><i class="ti ti-tools-kitchen-2"></i> منوی دسته‌بندی</h3>
+        <button class="icon-btn" id="drawerCloseBtn" style="color: #afafb9;"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="drawer-content" id="drawerCategoriesList">
+        </div>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
 </html>
