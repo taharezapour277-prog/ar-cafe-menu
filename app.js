@@ -270,6 +270,15 @@ function positionARArrows() {
   nextArrow.position.set(hw, labelY, 0);
 }
 
+// ── CHANGE ───────────────────────────────
+// این تابع جدید اضافه شده تا المان‌های سه بعدی (لیبل و فلش‌ها) رو مخفی یا آشکار کنه
+function update3DUIVisibility(isAR) {
+  if (labelSprite) labelSprite.visible = isAR;
+  if (prevArrow) prevArrow.visible = isAR;
+  if (nextArrow) nextArrow.visible = isAR;
+}
+// ─────────────────────────────────────────
+
 // =========================================
 // RETICLE
 // =========================================
@@ -571,12 +580,15 @@ function loadProduct(index) {
     positionLabel();
     positionARArrows();
 
+    // ── CHANGE ───────────────────────────────
+    // بلافاصله بعد از ساخته شدن یا آپدیت لیبل، بر اساس وضعیت وب/واقعیت‌مجازی مخفی یا نمایش داده بشه
+    update3DUIVisibility(isAR);
+    // ─────────────────────────────────────────
+
     hideLoading();
     isLoading = false;
 
     // ── KEY FIX ──────────────────────────────────────────────
-    // In AR, if reticle is already visible (surface already found),
-    // auto-place immediately so the user sees the model right away.
     if (isAR && reticle.visible && !modelPlaced) {
       placeModel();
     }
@@ -594,10 +606,9 @@ function loadProduct(index) {
       onLoaded(gltf.scene);
     },
 
-    undefined, // progress callback not needed
+    undefined,
 
     () => {
-      // Fallback geometry when .glb is missing
       const g = new THREE.Group();
       const base = new THREE.Mesh(
         new THREE.CylinderGeometry(0.18, 0.18, 0.03, 40),
@@ -641,7 +652,7 @@ renderer.xr.addEventListener("sessionstart", () => {
   modelPlaced = false;
 
   rootGroup.visible = false;
-  reticle.visible = false; // hidden until first hit-test result
+  reticle.visible = false;
 
   if (arHint) {
     arHint.textContent = "🔍 Scanning for a surface…";
@@ -649,10 +660,14 @@ renderer.xr.addEventListener("sessionstart", () => {
   }
   if (bottomPanel) bottomPanel.style.display = "none";
 
+  // ── CHANGE ───────────────────────────────
+  // موقع ورود به دوربین AR، لیبل سه بعدی و دکمه‌ها فعال بشن
+  update3DUIVisibility(true);
+  // ─────────────────────────────────────────
+
   clearModel();
   loadProduct(currentIndex);
 
-  // ── Attach WebXR select listener (reliable tap in AR) ──────
   const session = renderer.xr.getSession();
   session.addEventListener("select", onARSelect);
 });
@@ -671,6 +686,11 @@ renderer.xr.addEventListener("sessionend", () => {
   if (arHint) arHint.style.display = "none";
   if (bottomPanel) bottomPanel.style.display = "flex";
 
+  // ── CHANGE ───────────────────────────────
+  // موقع خارج شدن از دوربین AR، المان‌های سه بعدی مخفی بشن
+  update3DUIVisibility(false);
+  // ─────────────────────────────────────────
+
   clearModel();
   loadProduct(currentIndex);
 });
@@ -684,21 +704,17 @@ renderer.setAnimationLoop((_, frame) => {
   const delta = clock.getDelta();
   if (mixer) mixer.update(delta);
 
-  // Auto-rotate only in non-AR
   if (!renderer.xr.isPresenting && !isDragging) {
     modelYaw += delta * 0.3;
   }
   if (currentModel) rootGroup.rotation.y = modelYaw;
 
-  // Label always faces camera
   if (labelSprite) labelSprite.quaternion.copy(camera.quaternion);
 
-  // ── HIT-TEST ───────────────────────────────────────────────
   if (frame && renderer.xr.isPresenting) {
     const session = renderer.xr.getSession();
     const refSpace = renderer.xr.getReferenceSpace();
 
-    // Request hit-test source once per session
     if (!hitTestSourceRequested) {
       hitTestSourceRequested = true;
 
@@ -722,25 +738,20 @@ renderer.setAnimationLoop((_, frame) => {
       const results = frame.getHitTestResults(hitTestSource);
 
       if (results.length > 0) {
-        // Update reticle pose
         reticle.matrix.fromArray(results[0].getPose(refSpace).transform.matrix);
 
         if (!modelPlaced) {
-          // Show reticle while we wait for model to load
           reticle.visible = true;
 
-          // Update hint to "tap to place" once surface found
           if (arHint && arHint.textContent.includes("Scanning")) {
             arHint.textContent = "👆 Tap to place";
             arHint.style.display = "flex";
           }
 
-          // AUTO-PLACE: as soon as model is ready, place it automatically
           if (currentModel && !isLoading) {
             placeModel();
           }
         } else {
-          // After placement, keep reticle hidden
           reticle.visible = false;
         }
       } else {
@@ -748,7 +759,6 @@ renderer.setAnimationLoop((_, frame) => {
       }
     }
   }
-  // ──────────────────────────────────────────────────────────
 
   renderer.render(scene, camera);
 });
@@ -775,4 +785,11 @@ if (dotsEl) {
 }
 
 createARArrows();
+
+// ── CHANGE ───────────────────────────────
+// در ابتدای اجرای سایت که هنوز کاربر وارد دوربین نشده، المان‌های سه بعدی مخفی بشن
+update3DUIVisibility(false);
+// ─────────────────────────────────────────
+
 loadProduct(0);
+
