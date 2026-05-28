@@ -21,12 +21,14 @@
   </head>
 
   <body>
-    <!-- WebXR dom-overlay root -->
     <div id="ui-overlay">
-      <!-- shown while scanning surface -->
       <div id="ar-hint">🔍 در حال اسکن سطح…</div>
 
-      <!-- loading spinner -->
+      <div id="ar-nav">
+        <button class="ar-nav-btn" id="ar-prevBtn">◀ بعدی</button>
+        <button class="ar-nav-btn" id="ar-nextBtn">قبلی ▶</button>
+      </div>
+
       <div id="loadingIndicator">
         <div class="loading-dots">
           <span class="loading-dot"></span>
@@ -36,7 +38,6 @@
         <div class="loading-label">در حال بارگذاری مدل…</div>
       </div>
 
-      <!-- bottom info panel -->
       <div id="bottom-panel">
         <div id="indexDots"></div>
 
@@ -48,7 +49,6 @@
         <div id="description">بیکن ۹۸٪، قارچ، پنیر پیتزا و...</div>
 
         <div class="nav-row">
-          <!-- in RTL + row-reverse: prevBtn renders on the right, nextBtn on the left -->
           <button class="switch-btn" id="prevBtn">قبلی ▶</button>
           <button class="switch-btn" id="nextBtn">◀ بعدی</button>
         </div>
@@ -57,7 +57,7 @@
 
         <div class="brand">
           Powered by
-          <a href="https://yourwebsite.com" target="_blank">Brand</a>
+          <a href="https://yourwebsite.com" target="_blank">YourBrand AR</a>
         </div>
       </div>
     </div>

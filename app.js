@@ -42,6 +42,19 @@ const dotsEl = document.getElementById("indexDots");
 const loadingEl = document.getElementById("loadingIndicator");
 const bottomPanel = document.getElementById("bottom-panel");
 const arHint = document.getElementById("ar-hint");
+const arNav = document.getElementById("ar-nav"); // ← اضافه شده برای منوی ناوبری AR
+
+// =========================================
+// AR NAV BUTTONS LISTENERS
+// =========================================
+document.getElementById("ar-prevBtn")?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  navigate(-1);
+});
+document.getElementById("ar-nextBtn")?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  navigate(1);
+});
 
 // =========================================
 // RENDERER
@@ -73,6 +86,7 @@ const camera = new THREE.PerspectiveCamera(
 );
 camera.position.set(0, 0.3, 0.8);
 camera.lookAt(0, 0, 0);
+
 // =========================================
 // ENVIRONMENT
 // =========================================
@@ -108,7 +122,7 @@ scene.add(rimLight);
 // ROOT GROUP
 // =========================================
 const rootGroup = new THREE.Group();
-rootGroup.matrixAutoUpdate = true; // use position/quaternion/scale, NOT raw matrix
+rootGroup.matrixAutoUpdate = true;
 scene.add(rootGroup);
 rootGroup.visible = true;
 
@@ -118,8 +132,7 @@ rootGroup.visible = true;
 let currentIndex = 0;
 
 function makeTextCanvas(product) {
-  const W = 512,
-    H = 230;
+  const W = 512, H = 230;
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
@@ -153,9 +166,7 @@ function makeTextCanvas(product) {
   ctx.font = "bold 36px 'Segoe UI', Arial, sans-serif";
   ctx.fillText(product.price, W / 2, 104);
 
-  const dotY = 142,
-    dotR = 7,
-    spacing = 24;
+  const dotY = 142, dotR = 7, spacing = 24;
   const startX = W / 2 - ((products.length - 1) * spacing) / 2;
   products.forEach((_, i) => {
     ctx.beginPath();
@@ -167,8 +178,7 @@ function makeTextCanvas(product) {
   ctx.fillStyle = "rgba(255,255,255,0.72)";
   ctx.font = "21px 'Segoe UI', Arial, sans-serif";
   const words = product.description.split(" ");
-  let line = "",
-    lines = [];
+  let line = "", lines = [];
   for (const w of words) {
     const test = line ? line + " " + w : w;
     if (ctx.measureText(test).width > W - 40 && line) {
@@ -209,75 +219,20 @@ function createOrUpdateLabel(product) {
 function positionLabel() {
   if (!labelSprite || !currentModel) return;
   const box = new THREE.Box3().setFromObject(currentModel);
-  labelSprite.position.set(0, box.max.y + 1, 0);
+  // طبق درخواست شما، افست را به 0.38 افزایش دادیم تا توضیحات بالاتر برود
+  labelSprite.position.set(0, box.max.y + 0.38, 0);
 }
 
-// =========================================
-// AR NAV ARROWS
-// =========================================
-function makeArrowCanvas(dir) {
-  const S = 160;
-  const cvs = document.createElement("canvas");
-  cvs.width = cvs.height = S;
-  const ctx = cvs.getContext("2d");
-  ctx.clearRect(0, 0, S, S);
-  ctx.beginPath();
-  ctx.arc(S / 2, S / 2, S / 2 - 4, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(15,15,20,0.80)";
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,200,80,0.75)";
-  ctx.lineWidth = 4;
-  ctx.stroke();
-  ctx.fillStyle = "#FFFFFF";
-  ctx.font = "bold 80px Arial";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(
-    dir === "prev" ? "‹" : "›",
-    S / 2 + (dir === "prev" ? -3 : 3),
-    S / 2 + 3,
-  );
-  return cvs;
+// ── تابع کمکی جدید برای تغییر وضعیت هندلینگ دکمه‌های HTML در AR ──
+function setARNav(visible) {
+  if (!arNav) return;
+  arNav.classList.toggle("visible", visible);
 }
 
-let prevArrow = null,
-  nextArrow = null;
-
-function createARArrows() {
-  ["prev", "next"].forEach((dir) => {
-    const tex = new THREE.CanvasTexture(makeArrowCanvas(dir));
-    const sprite = new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        map: tex,
-        transparent: true,
-        depthTest: false,
-      }),
-    );
-    sprite.scale.set(0.1, 0.1, 1);
-    sprite.userData.navDir = dir;
-    rootGroup.add(sprite);
-    if (dir === "prev") prevArrow = sprite;
-    else nextArrow = sprite;
-  });
-}
-
-function positionARArrows() {
-  if (!prevArrow || !nextArrow || !currentModel) return;
-  const box = new THREE.Box3().setFromObject(currentModel);
-  const labelY = box.max.y + 1;
-  const hw = (0.2 * 512) / 230 / 2 + 0.07;
-  prevArrow.position.set(-hw, labelY, 0);
-  nextArrow.position.set(hw, labelY, 0);
-}
-
-// ── CHANGE ───────────────────────────────
-// این تابع جدید اضافه شده تا المان‌های سه بعدی (لیبل و فلش‌ها) رو مخفی یا آشکار کنه
 function update3DUIVisibility(isAR) {
+  // از آنجا که دکمه‌های HTML ناوبری اضافه شدند، فلش‌های سه‌بعدی را کلاً از فضای سه بعدی حذف یا مخفی کردیم
   if (labelSprite) labelSprite.visible = isAR;
-  if (prevArrow) prevArrow.visible = isAR;
-  if (nextArrow) nextArrow.visible = isAR;
 }
-// ─────────────────────────────────────────
 
 // =========================================
 // RETICLE
@@ -345,7 +300,7 @@ let isDragging = false;
 let prevX = 0;
 let modelYaw = 0;
 let dragMoved = false;
-const DRAG_THRESHOLD = 8; // px
+const DRAG_THRESHOLD = 8;
 
 function onDragStart(x) {
   isDragging = true;
@@ -363,9 +318,7 @@ function onDragEnd() {
   isDragging = false;
 }
 
-renderer.domElement.addEventListener("mousedown", (e) =>
-  onDragStart(e.clientX),
-);
+renderer.domElement.addEventListener("mousedown", (e) => onDragStart(e.clientX));
 renderer.domElement.addEventListener("mousemove", (e) => onDragMove(e.clientX));
 renderer.domElement.addEventListener("mouseup", onDragEnd);
 renderer.domElement.addEventListener("mouseleave", onDragEnd);
@@ -394,7 +347,6 @@ renderer.domElement.addEventListener(
   "touchend",
   (e) => {
     onDragEnd();
-    // Swipe navigation — non-AR only
     if (!renderer.xr.isPresenting) {
       const dx = e.changedTouches[0].clientX - touchStartX;
       if (Math.abs(dx) > 55 && !dragMoved) navigate(dx < 0 ? 1 : -1);
@@ -405,13 +357,10 @@ renderer.domElement.addEventListener(
 
 // =========================================
 // PLACE MODEL AT RETICLE POSITION
-// This is called both from auto-placement and manual select.
 // =========================================
 function placeModel() {
   if (!reticle.visible || !currentModel) return;
 
-  // Decompose the reticle's world matrix into rootGroup's
-  // position / quaternion / scale — safe with matrixAutoUpdate = true
   const pos = new THREE.Vector3();
   const quat = new THREE.Quaternion();
   const scl = new THREE.Vector3();
@@ -419,7 +368,7 @@ function placeModel() {
 
   rootGroup.position.copy(pos);
   rootGroup.quaternion.copy(quat);
-  rootGroup.scale.set(1, 1, 1); // scale is handled by fitModel, not reticle
+  rootGroup.scale.set(1, 1, 1);
 
   rootGroup.visible = true;
   reticle.visible = false;
@@ -429,29 +378,14 @@ function placeModel() {
 }
 
 // =========================================
-// AR SELECT EVENT  (WebXR tap)
+// AR SELECT EVENT
 // =========================================
-function onARSelect() {
+function onARSelect(e) {
   if (dragMoved) return;
 
-  // ── بخش جدید: بررسی کلیک روی فلش‌های سه‌بعدی در حالت AR ──
-  const controller = renderer.xr.getController(0);
-  const tempMatrix = new THREE.Matrix4();
-  tempMatrix.identity().extractRotation(controller.matrixWorld);
-  
-  _raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-  _raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
-  
-  const hits = _raycaster.intersectObjects([prevArrow, nextArrow].filter(Boolean));
-  
-  if (hits.length > 0) {
-    // اگر کاربر روی یکی از فلش‌ها کلیک کرد، محصول را تغییر بده و از تابع خارج شو
-    navigate(hits[0].object.userData.navDir === "next" ? 1 : -1);
-    return;
-  }
-  // ─────────────────────────────────────────────────────────
+  // جلوگیری از کلیک ناخواسته روی صفحه هنگام زدن دکمه‌های ناوبری HTML
+  if (e.inputSource.targetRayMode === "tracked-pointer") return;
 
-  // اگر روی فلش‌ها کلیک نشده بود، منطق قبلی جاگذاری مدل را اجرا کن
   if (modelPlaced) {
     modelPlaced = false;
     reticle.visible = true;
@@ -465,29 +399,6 @@ function onARSelect() {
 
   placeModel();
 }
-// =========================================
-// NON-AR CLICK: raycast AR arrows (desktop/non-AR fallback)
-// =========================================
-const _raycaster = new THREE.Raycaster();
-const _mouse = new THREE.Vector2();
-
-renderer.domElement.addEventListener("click", (e) => {
-  // In AR, we use the XR select event above — skip click handling
-  if (renderer.xr.isPresenting) return;
-  if (dragMoved) return;
-
-  _mouse.set(
-    (e.clientX / window.innerWidth) * 2 - 1,
-    (e.clientY / window.innerHeight) * -2 + 1,
-  );
-  _raycaster.setFromCamera(_mouse, camera);
-  const hits = _raycaster.intersectObjects(
-    [prevArrow, nextArrow].filter(Boolean),
-  );
-  if (hits.length > 0) {
-    navigate(hits[0].object.userData.navDir === "next" ? 1 : -1);
-  }
-});
 
 // =========================================
 // FIT MODEL
@@ -511,7 +422,6 @@ function fitModel(model, isAR) {
 
   model.position.x = -centerAfter.x;
   model.position.z = -centerAfter.z;
-  // Bottom of model sits on y = 0
   model.position.y = -boxAfter.min.y + (isAR ? 0.008 : 0);
 }
 
@@ -592,26 +502,19 @@ function loadProduct(index) {
 
     createOrUpdateLabel(product);
     positionLabel();
-    positionARArrows();
 
-    // ── CHANGE ───────────────────────────────
-    // بلافاصله بعد از ساخته شدن یا آپدیت لیبل، بر اساس وضعیت وب/واقعیت‌مجازی مخفی یا نمایش داده بشه
     update3DUIVisibility(isAR);
-    // ─────────────────────────────────────────
 
     hideLoading();
     isLoading = false;
 
-    // ── KEY FIX ──────────────────────────────────────────────
     if (isAR && reticle.visible && !modelPlaced) {
       placeModel();
     }
-    // ─────────────────────────────────────────────────────────
   };
 
   loader.load(
     product.model,
-
     (gltf) => {
       if (gltf.animations?.length) {
         mixer = new THREE.AnimationMixer(gltf.scene);
@@ -619,9 +522,7 @@ function loadProduct(index) {
       }
       onLoaded(gltf.scene);
     },
-
     undefined,
-
     () => {
       const g = new THREE.Group();
       const base = new THREE.Mesh(
@@ -650,12 +551,8 @@ function navigate(dir) {
   loadProduct(currentIndex);
 }
 
-document
-  .getElementById("nextBtn")
-  ?.addEventListener("click", () => navigate(1));
-document
-  .getElementById("prevBtn")
-  ?.addEventListener("click", () => navigate(-1));
+document.getElementById("nextBtn")?.addEventListener("click", () => navigate(1));
+document.getElementById("prevBtn")?.addEventListener("click", () => navigate(-1));
 
 // =========================================
 // XR SESSION EVENTS
@@ -669,15 +566,13 @@ renderer.xr.addEventListener("sessionstart", () => {
   reticle.visible = false;
 
   if (arHint) {
-    arHint.textContent = "🔍 در حال اسکن سطح…";
+    arHint.textContent = "🔍 Scanning for a surface…";
     arHint.style.display = "flex";
   }
   if (bottomPanel) bottomPanel.style.display = "none";
 
-  // ── CHANGE ───────────────────────────────
-  // موقع ورود به دوربین AR، لیبل سه بعدی و دکمه‌ها فعال بشن
+  setARNav(true); // نمایش دکمه‌های ناوبری AR
   update3DUIVisibility(true);
-  // ─────────────────────────────────────────
 
   clearModel();
   loadProduct(currentIndex);
@@ -690,6 +585,12 @@ renderer.xr.addEventListener("sessionend", () => {
   hitTestSource = null;
   hitTestSourceRequested = false;
   modelPlaced = false;
+  modelYaw = 0;
+
+  // ── فیکس باگ ۱: ریست کامل دوربین پس از خروج از AR ──
+  camera.position.set(0, 0.3, 0.8);
+  camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix();
 
   reticle.visible = false;
   rootGroup.position.set(0, 0, 0);
@@ -700,10 +601,8 @@ renderer.xr.addEventListener("sessionend", () => {
   if (arHint) arHint.style.display = "none";
   if (bottomPanel) bottomPanel.style.display = "flex";
 
-  // ── CHANGE ───────────────────────────────
-  // موقع خارج شدن از دوربین AR، المان‌های سه بعدی مخفی بشن
+  setARNav(false); // مخفی کردن دکمه‌های ناوبری AR
   update3DUIVisibility(false);
-  // ─────────────────────────────────────────
 
   clearModel();
   loadProduct(currentIndex);
@@ -731,7 +630,6 @@ renderer.setAnimationLoop((_, frame) => {
 
     if (!hitTestSourceRequested) {
       hitTestSourceRequested = true;
-
       session.requestReferenceSpace("viewer").then((viewerSpace) => {
         session.requestHitTestSource({ space: viewerSpace }).then((src) => {
           hitTestSource = src;
@@ -750,18 +648,14 @@ renderer.setAnimationLoop((_, frame) => {
 
     if (hitTestSource) {
       const results = frame.getHitTestResults(hitTestSource);
-
       if (results.length > 0) {
         reticle.matrix.fromArray(results[0].getPose(refSpace).transform.matrix);
-
         if (!modelPlaced) {
           reticle.visible = true;
-
           if (arHint && arHint.textContent.includes("Scanning")) {
             arHint.textContent = "👆 Tap to place";
             arHint.style.display = "flex";
           }
-
           if (currentModel && !isLoading) {
             placeModel();
           }
@@ -798,12 +692,5 @@ if (dotsEl) {
   });
 }
 
-createARArrows();
-
-// ── CHANGE ───────────────────────────────
-// در ابتدای اجرای سایت که هنوز کاربر وارد دوربین نشده، المان‌های سه بعدی مخفی بشن
 update3DUIVisibility(false);
-// ─────────────────────────────────────────
-
 loadProduct(0);
-
