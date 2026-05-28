@@ -1,0 +1,75 @@
+{
+  "categories": {
+    "pizza": { "name": "پیتزا", "icon": "ti-pizza" },
+    "salad": { "name": "سالاد سیب زمینی", "icon": "ti-salad" },
+    "burger": { "name": "برگر و پنینی و هات داگ", "icon": "ti-burger" },
+    "pasta": { "name": "پاستا", "icon": "ti-soup" },
+    "iranian": { "name": "غذای ایرانی", "icon": "ti-tools-kitchen-2" }
+  },
+  "products": [
+    {
+      "id": 1,
+      "category": "pizza",
+      "name": "پیتزا بیکن",
+      "price": "۶۸۰,۰۰۰",
+      "description": "بیکن 98%، قارچ، پنیر پیتزا و...",
+      "model": "./models/pizza.glb",
+      "orderLink": "https://app.topmenumarket.com/menu/palladium.cafe.restaurant/products/21389"
+    },
+    {
+      "id": 2,
+      "category": "pizza",
+      "name": "پیتزا پالادیوم",
+      "price": "۶۶۰,۰۰۰",
+      "description": "ژامبون 90% و بیکن قارچ، پنیر پیتزا، سس مخصوص و...",
+      "model": "./models/pizza1.glb",
+      "orderLink": "https://app.topmenumarket.com/menu/palladium.cafe.restaurant/products/21388"
+    },
+    {
+      "id": 3,
+      "category": "pizza",
+      "name": "پیتزا رست بیف",
+      "price": "۶۸۰,۰۰۰",
+      "description": "گوشت ریش، قارچ، فلف دلمه، زیتون سیاه ",
+      "model": "./models/pizza1.glb",
+      "orderLink": "https://app.topmenumarket.com/menu/palladium.cafe.restaurant/products/21390"
+    },
+
+    {
+      "id": 4,
+      "category": "salad",
+      "name": "سیب زمینی ساده",
+      "price": "۲۲۵,۰۰۰",
+      "description": "سیب زمینی، ژامبون ، قارچ ، پنیر پیتزا",
+      "model": "./models/salad1.glb",
+      "orderLink": "https://app.topmenumarket.com/menu/palladium.cafe.restaurant/products/21403"
+    },
+    {
+      "id": 5,
+      "category": "burger",
+      "name": "برگر پالادیوم",
+      "price": "۷۶۰,۰۰۰",
+      "description": "برگر دستی 150گرمی، بیکن ، پنیر گودا ، کاهو گوجه  و دورچین",
+      "model": "./models/salad1.glb",
+      "orderLink": "https://app.topmenumarket.com/menu/palladium.cafe.restaurant/products/21393"
+    },
+    {
+      "id": 6,
+      "category": "pasta",
+      "name": "پاستا آلفردو مرغ",
+      "price": "۵۴۰,۰۰۰",
+      "description": "پاستا پنه، سس آلفردو مخصوص پالادیوم، مرغ طعم دار شده و...",
+      "model": "./models/pasta1.glb",
+      "orderLink": "https://app.topmenumarket.com/menu/palladium.cafe.restaurant/products/21399"
+    },
+    {
+      "id": 7,
+      "category": "iranian",
+      "name": "ته چین مرغ",
+      "price": "۵۹۰,۰۰۰",
+      "description": "ته چین برنج 100% ایرانی با مرغ ریش شده مرینت شده به همراه سالاد و دورچین",
+      "model": "./models/iranian1.glb",
+      "orderLink": "https://app.topmenumarket.com/menu/palladium.cafe.restaurant/products/36476"
+    }
+  ]
+}

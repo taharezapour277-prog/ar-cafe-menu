@@ -1,100 +1,119 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>منوی هوشمند سه بعدی و واقعیت افزوده (AR)</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <title>منوی هوشمند سه بعدی و واقعیت افزوده (AR)</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;600;700&display=swap" rel="stylesheet">
-
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
-
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    <style>
+      @font-face {
+        font-family: "Vazirmatn";
+        src: url("./assets/fonts/Vazirmatn.woff2") format("woff2");
+        font-weight: 100 900;
+        font-style: normal;
+        font-display: swap;
       }
-    }
-  </script>
+      body {
+        font-family: "Vazirmatn", sans-serif;
+      }
+    </style>
 
-  <link rel="stylesheet" href="./style.css">
-</head>
-<body>
+    <link rel="stylesheet" href="./assets/icons/tabler-icons.min.css" />
 
-  <div id="app">
-    <div id="canvas-container"></div>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./assets/libs/three/three.module.js",
+          "three/addons/": "./assets/libs/three/addons/"
+        }
+      }
+    </script>
 
-    <div class="topnav">
-      <button class="icon-btn" id="menuToggleBtn" aria-label="منوی اصلی">
-        <i class="ti ti-menu-2"></i>
-      </button>
-      <div class="nav-title">منو دیجیتال کافه رستوران</div>
-      <button class="icon-btn" id="shareBtn" aria-label="اشتراک گذاری">
-        <i class="ti ti-share"></i>
-      </button>
-    </div>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="canvas-container"></div>
 
-    <div class="category-quick-bar" id="quickCategoryBar">
+      <div class="topnav">
+        <button class="icon-btn" id="menuToggleBtn" aria-label="منوی اصلی">
+          <i class="ti ti-menu-2"></i>
+        </button>
+        <div class="nav-title">منو دیجیتال پالادیوم</div>
+        <button class="icon-btn" id="shareBtn" aria-label="اشتراک گذاری">
+          <i class="ti ti-share"></i>
+        </button>
       </div>
 
-    <div id="ui-overlay">
-      <div id="ar-hint"><i class="ti ti-scan"></i> <span>در حال اسکن سطح…</span></div>
+      <div class="category-quick-bar" id="quickCategoryBar"></div>
 
-      <div id="ar-nav">
-        <button class="ar-nav-btn" id="ar-prevBtn">◀ بعدی</button>
-        <button class="ar-nav-btn" id="ar-nextBtn">قبلی ▶</button>
+      <div id="ui-overlay">
+        <div id="ar-hint">
+          <i class="ti ti-scan"></i> <span>در حال اسکن سطح…</span>
+        </div>
+
+        <div id="ar-nav">
+          <button class="ar-nav-btn" id="ar-prevBtn">◀ بعدی</button>
+          <button class="ar-nav-btn" id="ar-nextBtn">قبلی ▶</button>
+        </div>
+
+        <div id="loadingIndicator">
+          <div class="loading-dots">
+            <span class="loading-dot"></span>
+            <span class="loading-dot"></span>
+            <span class="loading-dot"></span>
+          </div>
+          <div class="loading-label">در حال بارگذاری مدل سه بعدی…</div>
+        </div>
       </div>
 
-      <div id="loadingIndicator">
-        <div class="loading-dots">
-          <span class="loading-dot"></span>
-          <span class="loading-dot"></span>
-          <span class="loading-dot"></span>
+      <div class="scroll-area">
+        <div id="bottom-panel">
+          <div id="indexDots"></div>
+
+          <div class="top-row">
+            <div id="name">بارگذاری...</div>
+            <div id="price">...</div>
+          </div>
+
+          <div id="description">توضیحات محصول</div>
+
+          <div class="nav-row">
+            <button class="switch-btn" id="nextBtn">
+              <i class="ti ti-chevron-right"></i> بعدی
+            </button>
+            <button class="switch-btn" id="prevBtn">
+              قبلی <i class="ti ti-chevron-left"></i>
+            </button>
+          </div>
+
+          <div class="brand">
+            Powered by <a href="#" target="_blank">Taha Rezapour</a>
+          </div>
         </div>
-        <div class="loading-label">در حال بارگذاری مدل سه بعدی…</div>
+      </div>
+
+      <div class="bottom-action-bar">
+        <button id="orderBtn">
+          <i class="ti ti-shopping-cart"></i> <span>سفارش این محصول</span>
+        </button>
+      </div>
+
+      <div id="drawer-overlay"></div>
+      <div id="drawer">
+        <div class="drawer-header">
+          <h3><i class="ti ti-tools-kitchen-2"></i> منوی دسته‌بندی</h3>
+          <button class="icon-btn" id="drawerCloseBtn" style="color: #afafb9">
+            <i class="ti ti-x"></i>
+          </button>
+        </div>
+        <div class="drawer-content" id="drawerCategoriesList"></div>
       </div>
     </div>
 
-    <div class="scroll-area">
-      <div id="bottom-panel">
-        <div id="indexDots"></div>
-
-        <div class="top-row">
-          <div id="name">بارگذاری...</div>
-          <div id="price">...</div>
-        </div>
-
-        <div id="description">توضیحات محصول</div>
-
-        <div class="nav-row">
-          <button class="switch-btn" id="prevBtn">قبلی <i class="ti ti-chevron-left"></i></button>
-          <button class="switch-btn" id="nextBtn"><i class="ti ti-chevron-right"></i> بعدی</button>
-        </div>
-        
-        <div class="brand">
-          Powered by <a href="#" target="_blank">AR System</a>
-        </div>
-      </div>
-    </div>
-
-    <div class="bottom-action-bar">
-      <button id="orderBtn"><i class="ti ti-shopping-cart"></i> <span>سفارش این محصول</span></button>
-    </div>
-
-    <div id="drawer-overlay"></div>
-    <div id="drawer">
-      <div class="drawer-header">
-        <h3><i class="ti ti-tools-kitchen-2"></i> منوی دسته‌بندی</h3>
-        <button class="icon-btn" id="drawerCloseBtn" style="color: #afafb9;"><i class="ti ti-x"></i></button>
-      </div>
-      <div class="drawer-content" id="drawerCategoriesList">
-        </div>
-    </div>
-  </div>
-
-  <script type="module" src="./app.js"></script>
-</body>
+    <script type="module" src="./app.js"></script>
+  </body>
 </html>
